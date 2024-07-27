@@ -1,0 +1,15 @@
+pkslow:
+  jwt:
+    secretKey: daf66e01593f61a15b857cf433aae03a005812b31234e149036bcc8dee755dbb
+    validityInMs: 600000
+server:
+  port: 8080
+spring:
+  main:
+    allow-circular-references: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/login_system
+    username: root
+    password: liuzheng
+  mybatis-plus:
+    mapper-locations: classpath:/mappers/*.xml
