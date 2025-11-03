@@ -56,8 +56,8 @@ public class SecurityConfig {
                 .sessionManagement(sessionManagement -> sessionManagement // 配置会话管理策略，所有请求不使用会话状态
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeRequests(authorize -> authorize
-                        .requestMatchers("/auth/login").permitAll()
-                        .requestMatchers("/auth/register").permitAll() // 登录页和注册页允许所有用户访问
+                        .requestMatchers("/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/v1/auth/register").permitAll() // 登录页和注册页允许所有用户访问
                         .requestMatchers(HttpMethod.GET, "/admin").hasRole("ADMIN") // 定义一个只允许管理员访问的页面
                         .requestMatchers(HttpMethod.GET, "/user").hasRole("USER") // 只允许用户访问的页面
                         .anyRequest()

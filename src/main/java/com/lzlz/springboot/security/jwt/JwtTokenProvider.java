@@ -67,6 +67,7 @@ public class JwtTokenProvider {
      * @create 2024-07-27
      **/
     public Authentication getAuthentication(String token) {
+        System.out.println(token);
         UserDetails userDetails = this.userDetailsService.loadUserByUsername(getUsername(token));
         return new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
     }

@@ -3,6 +3,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import jakarta.validation.constraints.NotEmpty;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -13,6 +14,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 @Data
+@AllArgsConstructor
 @TableName("users")
 public class User implements UserDetails {
     @TableId(type = IdType.AUTO)
@@ -25,15 +27,18 @@ public class User implements UserDetails {
     private String password;
 
     @NotEmpty
-    private String roles;
+    private String role;
 
+    @NotEmpty
+    private String email;
     public User() {
     }
 
-    public User(@NotEmpty String username, @NotEmpty String password, List<String> roles) {
+    public User(@NotEmpty String username, @NotEmpty String password, String role, String email) {
         this.username = username;
         this.password = password;
-        this.roles = String.join(",", roles);
+        this.role = role;
+        this.email = email;
     }
 
     /**
@@ -41,10 +46,12 @@ public class User implements UserDetails {
      * @return java.util.Collection<? extends org.springframework.security.core.GrantedAuthority>
      * @author liuzheng
      * @create 2024-07-27
+     * role:ROLE_开头
      **/
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(roles.split(",")).stream()
+        System.out.println(role);
+        return List.of(role).stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
     }
