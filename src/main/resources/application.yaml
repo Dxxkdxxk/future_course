@@ -2,14 +2,33 @@ pkslow:
   jwt:
     secretKey: daf66e01593f61a15b857cf433aae03a005812b31234e149036bcc8dee755dbb
     validityInMs: 600000
+
 server:
   port: 8080
+
 spring:
   main:
     allow-circular-references: true
+
   datasource:
-    url: jdbc:mysql://localhost:3306/login_system
+    url: jdbc:mysql://localhost:3306/platform_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
-    password: liuzheng
+    password: 12345678
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   mybatis-plus:
     mapper-locations: classpath:/mappers/*.xml
+
+    configuration:
+      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+
+neo4j:
+  uri: bolt://localhost:7687
+  username: neo4j
+  password: 12345678

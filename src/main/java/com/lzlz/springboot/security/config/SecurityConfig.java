@@ -60,6 +60,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/register").permitAll() // 登录页和注册页允许所有用户访问
                         .requestMatchers(HttpMethod.GET, "/admin").hasRole("ADMIN") // 定义一个只允许管理员访问的页面
                         .requestMatchers(HttpMethod.GET, "/user").hasRole("USER") // 只允许用户访问的页面
+                        .requestMatchers("/api/v1/teacher/**").permitAll() // 暂时允许所有人访问
+                        .requestMatchers("/api/v1/student/**").permitAll()
+                        .requestMatchers("/api/v1/course/**").permitAll()
                         .anyRequest()
                         .authenticated()
                 )
