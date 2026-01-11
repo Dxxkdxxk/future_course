@@ -31,51 +31,76 @@ public class HomeworkServiceImpl implements HomeworkService {
     private HomeworkQuestionMapper homeworkQuestionMapper;
 
     @Autowired
-    private QuestionMapper questionMapper; // (!!!) 新增注入
+    private QuestionMapper questionMapper;
 
     @Override
-    @Transactional(rollbackFor = Exception.class) // 保证主表和关联表同时成功或失败
+    @Transactional(rollbackFor = Exception.class)
     public void createHomework(Long courseId, CreateHomeworkRequest request) {
-        // 1. 保存作业主表信息
+        // ... (原有代码保持不变) ...
         Homework homework = new Homework();
         homework.setCourseId(courseId);
         homework.setTitle(request.getTitle());
         homework.setDescription(request.getDescription());
         homework.setDeadline(request.getDeadline());
-        homework.setStatus(1); // 1: 已发布
+        homework.setStatus(1);
+        homeworkMapper.insert(homework);
 
-        homeworkMapper.insert(homework); // Mybatis-Plus 会自动回填 homework.id
-
-        // 2. 保存题目关联信息
         if (request.getQuestions() != null && !request.getQuestions().isEmpty()) {
             int sortOrder = 1;
             for (CreateHomeworkRequest.QuestionItem item : request.getQuestions()) {
                 HomeworkQuestion relation = new HomeworkQuestion();
-                relation.setHomeworkId(homework.getId()); // 使用刚才生成的主键
+                relation.setHomeworkId(homework.getId());
                 relation.setQuestionId(item.getQuestionId());
                 relation.setScore(item.getScore());
                 relation.setSortOrder(sortOrder++);
-
                 homeworkQuestionMapper.insert(relation);
             }
         }
     }
 
+    /**
+     * (新增) 实现获取列表方法
+     */
+    @Override
+    public List<Homework> getHomeworkList(Long courseId) {
+        QueryWrapper<Homework> wrapper = new QueryWrapper<>();
+        // 对应数据库字段 course_id
+        wrapper.eq("course_id", courseId);
+        // 按创建时间倒序排列 (对应数据库字段 created_at)
+        wrapper.orderByDesc("created_at");
+
+        return homeworkMapper.selectList(wrapper);
+    }
+
+    /**
+     * (新增) 学生端列表查询实现
+     * 1. 必须是当前课程 (courseId)
+     * 2. 必须是已发布状态 (status = 1)
+     * 3. 按发布时间/创建时间倒序
+     */
+    @Override
+    public List<Homework> getHomeworkListForStudent(Long courseId) {
+        QueryWrapper<Homework> wrapper = new QueryWrapper<>();
+        wrapper.eq("course_id", courseId);
+        wrapper.eq("status", 1); // 1: 已发布
+        wrapper.orderByDesc("created_at");
+
+        return homeworkMapper.selectList(wrapper);
+    }
+
     @Override
     public HomeworkDetailResponse getHomeworkDetailForTeacher(Long homeworkId) {
-        // 1. 查询作业主表
+        // ... (原有代码保持不变) ...
         Homework homework = homeworkMapper.selectById(homeworkId);
         if (homework == null) {
             throw new ResourceNotFoundException("Homework not found with id: " + homeworkId);
         }
 
-        // 2. 查询关联表 (HomeworkQuestion)，按 sortOrder 排序
         QueryWrapper<HomeworkQuestion> hqWrapper = new QueryWrapper<>();
         hqWrapper.eq("homework_id", homeworkId);
         hqWrapper.orderByAsc("sort_order");
         List<HomeworkQuestion> hqList = homeworkQuestionMapper.selectList(hqWrapper);
 
-        // 3. 提取所有 QuestionID 并批量查询 Question 表 (减少数据库交互次数)
         List<String> questionIds = hqList.stream()
                 .map(HomeworkQuestion::getQuestionId)
                 .collect(Collectors.toList());
@@ -89,7 +114,6 @@ public class HomeworkServiceImpl implements HomeworkService {
             questionMap = Map.of();
         }
 
-        // 4. 组装 QuestionDetailItem 列表
         List<HomeworkDetailResponse.QuestionDetailItem> questionItems = new ArrayList<>();
         for (HomeworkQuestion hq : hqList) {
             Question q = questionMap.get(hq.getQuestionId());
@@ -98,16 +122,14 @@ public class HomeworkServiceImpl implements HomeworkService {
                 item.setQuestionId(q.getId());
                 item.setStem(q.getStem());
                 item.setType(q.getType());
-                // 注意：这里使用作业中设定的分数，而不是题目原本的默认分数
                 item.setScore(hq.getScore());
                 item.setSortOrder(hq.getSortOrder());
-                item.setAnswer(q.getAnswer());     // 教师端可以看到答案
-                item.setAnalysis(q.getAnalysis()); // 教师端可以看到解析
+                item.setAnswer(q.getAnswer());
+                item.setAnalysis(q.getAnalysis());
                 questionItems.add(item);
             }
         }
 
-        // 5. 组装最终 Response
         HomeworkDetailResponse response = new HomeworkDetailResponse();
         BeanUtils.copyProperties(homework, response);
         response.setQuestions(questionItems);
@@ -115,4 +137,3 @@ public class HomeworkServiceImpl implements HomeworkService {
         return response;
     }
 }
-
