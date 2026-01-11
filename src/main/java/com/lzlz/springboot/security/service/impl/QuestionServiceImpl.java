@@ -31,7 +31,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         question.setScore(request.getScore());
         question.setEstimatedTime(request.getEstimatedTime());
 
-        // (!!!) 保存答案和解析
+        // 保存新增字段
         question.setAnswer(request.getAnswer());
         question.setAnalysis(request.getAnalysis());
 
@@ -53,36 +53,31 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
             Sheet sheet = workbook.getSheetAt(0);
 
-            // 从第2行开始读取 (跳过表头)
             for (Row row : sheet) {
+                // 跳过表头 (第1行)
                 if (row.getRowNum() < 1) continue;
-                if (row.getCell(0) == null) continue; // 跳过空行
+
+                // 跳过第一列为空的行 (防止读取空行)
+                if (row.getCell(0) == null) continue;
 
                 Question q = new Question();
                 q.setCourseId(courseId);
 
-                // 读取 Excel 列 (索引从 0 开始)
+                // --- 读取字符串列 ---
                 // 0: 题干, 1: 类型, 2: 知识点, 3: 难度
                 q.setStem(getCellStringValue(row.getCell(0)));
                 q.setType(getCellStringValue(row.getCell(1)));
                 q.setTopic(getCellStringValue(row.getCell(2)));
                 q.setDifficulty(getCellStringValue(row.getCell(3)));
 
-                // 4: 分数, 5: 时长 (数字类型)
-                // 注意: getNumericCellValue 返回 double，需要强转 int
-                if (row.getCell(4) != null) {
-                    q.setScore((int) row.getCell(4).getNumericCellValue());
-                } else {
-                    q.setScore(0);
-                }
+                // --- 读取数字列 (使用修复后的方法) ---
+                // 4: 分值, 5: 时长
+                // 即使Excel里是 "10" (文本格式)，getCellIntValue 也能正确解析
+                q.setScore(getCellIntValue(row.getCell(4)));
+                q.setEstimatedTime(getCellIntValue(row.getCell(5)));
 
-                if (row.getCell(5) != null) {
-                    q.setEstimatedTime((int) row.getCell(5).getNumericCellValue());
-                } else {
-                    q.setEstimatedTime(0);
-                }
-
-                // (!!!) 6: 答案, 7: 解析
+                // --- 读取新增字段 ---
+                // 6: 答案, 7: 解析
                 q.setAnswer(getCellStringValue(row.getCell(6)));
                 q.setAnalysis(getCellStringValue(row.getCell(7)));
 
@@ -96,8 +91,8 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
             return questions.size();
 
         } catch (Exception e) {
-            e.printStackTrace(); // 方便调试
-            throw new CustomGraphException(400, "Excel 解析失败: " + e.getMessage() + "。请确保上传的是 .xlsx 文件且格式正确。");
+            e.printStackTrace();
+            throw new CustomGraphException(400, "Excel 解析失败: " + e.getMessage());
         }
     }
 
@@ -117,6 +112,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                     .or()
                     .like("topic", query.getKeyword()));
         }
+        // 支持按ID筛选
         if (query.getQuestions() != null && !query.getQuestions().isEmpty()) {
             String[] ids = query.getQuestions().split(",");
             wrapper.in("id", (Object[]) ids);
@@ -126,11 +122,40 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         return this.list(wrapper);
     }
 
-    // 辅助方法：安全获取字符串
+    /**
+     * (!!!) 核心修复方法：兼容数字格式和文本格式的数字读取
+     */
+    private Integer getCellIntValue(Cell cell) {
+        if (cell == null) {
+            return 0;
+        }
+        // 情况1: Excel 单元格格式是 "数值"
+        if (cell.getCellType() == CellType.NUMERIC) {
+            return (int) cell.getNumericCellValue();
+        }
+        // 情况2: Excel 单元格格式是 "文本" (例如左上角有绿色小三角)
+        if (cell.getCellType() == CellType.STRING) {
+            String val = cell.getStringCellValue().trim();
+            if (val.isEmpty()) return 0;
+            try {
+                // 尝试将字符串 "10" 解析为整数 10
+                return Integer.parseInt(val);
+            } catch (NumberFormatException e) {
+                // 如果解析失败(例如填了 "10分")，返回0或抛出异常
+                System.err.println("解析数字失败: " + val);
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 辅助方法：强制以字符串格式读取单元格
+     */
     private String getCellStringValue(Cell cell) {
         if (cell == null) return "";
-        // 强制设为 String 类型读取，避免数字读取成 "10.0" 这种格式
+        // 强制设置类型为 String，防止读取数字时报错
         cell.setCellType(CellType.STRING);
-        return cell.getStringCellValue();
+        return cell.getStringCellValue().trim();
     }
 }

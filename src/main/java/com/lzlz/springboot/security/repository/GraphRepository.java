@@ -4,19 +4,16 @@ import com.lzlz.springboot.security.dto.CreateNodeRequest;
 import com.lzlz.springboot.security.dto.GraphEdge;
 import com.lzlz.springboot.security.dto.GraphNode;
 import com.lzlz.springboot.security.dto.UpdateNodeRequest;
+import com.lzlz.springboot.security.dto.GraphResourceDto;
 import com.lzlz.springboot.security.exception.CustomGraphException;
 import com.lzlz.springboot.security.exception.ResourceNotFoundException;
-import org.neo4j.driver.Driver;
+import org.neo4j.driver.*;
 import org.neo4j.driver.Record;
-import org.neo4j.driver.Result;
-import org.neo4j.driver.Session;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Repository;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -30,6 +27,12 @@ public class GraphRepository {
 
     @Autowired
     private Driver neo4jDriver;
+
+    @Value("${graph.limit.max-depth:5}")
+    private int maxDepth;
+
+    @Value("${graph.limit.max-nodes:2000}")
+    private int maxNodeCount;
 
     public void saveGraph(long graphId, List<GraphNode> nodes, List<GraphEdge> edges) {
 
@@ -93,16 +96,11 @@ public class GraphRepository {
                         // (!!!) [lbl IN labels(n) WHERE lbl <> 'KnowledgeNode'][0]
                         // 这行Cypher代码用于提取您的特定标签 (KnowledgeModule/Unit/Point)
                         "MATCH (n:KnowledgeNode {graphId: $graphId}) "
-                                +
-                                "RETURN "
-                                +
-                                "  n.nodeId AS nodeId, "
-                                +
-                                "  n.name AS name, "
-                                +
-                                "  n.description AS description, "
-                                +
-                                "  [lbl IN labels(n) WHERE lbl <> 'KnowledgeNode'][0] AS label"
+                                + "RETURN "
+                                + "  n.nodeId AS nodeId, "
+                                + "  n.name AS name, "
+                                + "  n.description AS description, "
+                                + "  [lbl IN labels(n) WHERE lbl <> 'KnowledgeNode'][0] AS label"
                         , Map.of("graphId", graphId)
                 );
                 return result.list(r -> r.asMap());
@@ -110,33 +108,20 @@ public class GraphRepository {
 
             if (nodes.isEmpty()) {
                 // 如果在Neo4j中也找不到（例如数据不同步），也抛出404
-                throw new ResourceNotFoundException("Graph components not found in Neo4j for id: "
-                        + graphId);
+                throw new ResourceNotFoundException("Graph components not found in Neo4j for id: " + graphId);
             }
 
-            // 2. 获取所有边
-            // 2. 获取所有边
-            List<Map<String, Object>> edges = session.readTransaction(tx -> {
-                Result result = tx.run(
-                        // 查找该图谱中，节点之间的所有关系
-                        "MATCH (source:KnowledgeNode {graphId: $graphId})-[r]->(target:KnowledgeNode {graphId: $graphId}) "
-                                +
-                                // (!!!) [修正] 添加 'contains' 到 WHERE 条件中
-                                "WHERE type(r) = 'HAS_CHILD' OR type(r) = 'RELATED_TO' OR type(r) = 'contains' "
-                                +
-                                "RETURN "
-                                +
-                                "  coalesce(r.edgeId, toString(id(r))) AS edgeId, "
-                                +
-                                "  source.nodeId AS sourceNodeId, "
-                                +
-                                "  target.nodeId AS targetNodeId, "
-                                +
-                                // (!!!) 你的 coalesce 逻辑现在可以正确工作了
-                                // 它会把 HAS_CHILD 和 contains (假设它们没有 r.relationType 属性) 都映射为 "contains"
-                                "  coalesce(r.relationType, 'contains') AS relationType"
-                        , Map.of("graphId", graphId)
-                );
+            // 2. (!!!) 获取所有关系
+            List<Map<String, Object>> edges = session.executeRead(tx -> {
+                // 核心修改：这里没有任何 WHERE type(r) = ... 的限制
+                // 只要是两个 KnowledgeNode 之间的连线，无论叫什么名字，都会被查出来
+                String cypher = "MATCH (source:KnowledgeNode {graphId: $graphId})-[r]->(target:KnowledgeNode {graphId: $graphId}) "
+                                + "RETURN coalesce(r.edgeId, toString(id(r))) AS edgeId, "
+                                + "source.nodeId AS sourceNodeId, "
+                                + "target.nodeId AS targetNodeId, "
+                                + "type(r) AS relationType"; // 将关系类型返回给前端
+
+                Result result = tx.run(cypher, Map.of("graphId", graphId));
                 return result.list(r -> r.asMap());
             });
             return Map.of("nodes", nodes, "edges", edges);
@@ -157,70 +142,94 @@ public class GraphRepository {
      @return
      包含新节点信息的 Map (nodeId, name, description, label)
      */
-    public Map<String, Object> createNodeAndLink(long graphId, CreateNodeRequest request)
-    {
-
-        // 1. 为新节点生成一个唯一的 nodeId
+    public Map<String, Object> createNodeAndLink(long graphId, CreateNodeRequest request) {
+        // 1. 准备参数
         String newNodeId = "node-" + UUID.randomUUID().toString();
         Map<String, Object> params = new HashMap<>();
         params.put("graphId", graphId);
         params.put("newNodeId", newNodeId);
         params.put("name", request.getName());
         params.put("description", request.getDescription());
-        params.put("label", request.getLabel()); // "KnowledgeUnit" or "KnowledgePoint"
-        params.put("parentId", request.getParentId()); // 可以为 null
+        params.put("label", request.getLabel());
+        params.put("parentId", request.getParentId());
 
-        String relationType = "contains";
 
-        // (!!!) 这里我们使用 StringBuilder 来构建查询，更高效
-        StringBuilder cypherBuilder = new StringBuilder();
 
-        // 2. Cypher: 创建节点
-        cypherBuilder.append("CALL apoc.create.node([$label, 'KnowledgeNode'], ")
+        // 确保限额配置有效 (防止配置注入失败导致为0)
+        int effectiveMaxDepth = (this.maxDepth > 0) ? this.maxDepth : 5;
+        int effectiveMaxNodes = (this.maxNodeCount > 0) ? this.maxNodeCount : 2000;
+
+        StringBuilder cypher = new StringBuilder();
+
+        // =========================================================
+        // 校验 A: 节点总数限制
+        // =========================================================
+        cypher.append("MATCH (n:KnowledgeNode {graphId: $graphId}) ")
+                .append("WITH count(n) AS totalCount ")
+                .append("CALL apoc.util.validate(totalCount >= ").append(effectiveMaxNodes)
+                .append(", '创建失败：图谱节点总数已达上限 (").append(effectiveMaxNodes).append(")', [totalCount]) ");
+
+        // =========================================================
+        // 校验 B: 层级深度限制 (关键修复)
+        // =========================================================
+        if (request.getParentId() != null && !request.getParentId().isBlank()) {
+            cypher.append("WITH * ")
+                    // (!!!) 修复点1：移除 graphId 约束，只用 nodeId 匹配父节点，防止因 graphId 数据问题导致找不到路径
+                    .append("MATCH (parent:KnowledgeNode {nodeId: $parentId}) ")
+
+                    // (!!!) 修复点2：查找路径
+                    // 查找所有指向 parent 的 contains 路径
+                    .append("OPTIONAL MATCH path = ()-[:contains*0..]->(parent) ")
+
+                    // 计算最大深度
+                    .append("WITH parent, max(length(path)) + 1 AS parentLevel ")
+                    .append("WITH parent, coalesce(parentLevel, 1) AS currentLevel ")
+
+                    // 校验
+                    .append("CALL apoc.util.validate(currentLevel >= ").append(effectiveMaxDepth)
+                    .append(", '创建失败：节点层级不能超过 ").append(effectiveMaxDepth)
+                    // (!!!) 修复点3：在报错信息中打印 currentLevel，方便调试
+                    .append(" 级 (当前父节点层级: ' + currentLevel + ')', [currentLevel]) ")
+
+                    .append("WITH parent ");
+        } else {
+            cypher.append("WITH 1 AS ignored ");
+        }
+
+        // =========================================================
+        // 执行创建
+        // =========================================================
+        cypher.append("CALL apoc.create.node([$label, 'KnowledgeNode'], ")
                 .append("{nodeId: $newNodeId, name: $name, description: $description, graphId: $graphId}) ")
                 .append("YIELD node ");
 
-        // 3. Cypher: (可选) 如果提供了 parentId，则创建关系
+        // 创建关系
         if (request.getParentId() != null && !request.getParentId().isBlank()) {
+            // 默认关系类型
+            String relationType = "contains";
+            params.put("relType", relationType);
             String newEdgeId = "edge-" + UUID.randomUUID().toString();
-            params.put("newEdgeId", newEdgeId); // 放入参数 map
-            cypherBuilder.append("WITH node ")
-                    .append("MATCH (parent:KnowledgeNode {nodeId: $parentId, graphId: $graphId}) ")
-                    .append("CALL apoc.create.relationship(parent, $relationType, {edgeId: $newEdgeId}, node) ") // <--- 修改这里
+            params.put("newEdgeId", newEdgeId);
+            cypher.append("MATCH (parent:KnowledgeNode {nodeId: $parentId}) ")
+                    .append("CALL apoc.create.relationship(parent, $relType, {edgeId: $newEdgeId}, node) ")
                     .append("YIELD rel ");
-            params.put("relationType", relationType);
         }
 
-        // 4. Cypher: 返回新创建的节点数据
-        cypherBuilder.append("RETURN ")
-                .append("  node.nodeId AS nodeId, ")
-                .append("  node.name AS name, ")
-                .append("  node.description AS description, ")
-                .append("  [lbl IN labels(node) WHERE lbl <> 'KnowledgeNode'][0] AS label");
+        // 返回结果
+        cypher.append("RETURN node.nodeId AS nodeId, node.name AS name, node.description AS description, ")
+                .append("[lbl IN labels(node) WHERE lbl <> 'KnowledgeNode'][0] AS label");
 
-        // (!!!)
-        // (!!!) 解决报错的关键 (!!!)
-        // (!!!)
-        // 1. 在 lambda 外部，将最终构建好的查询字符串赋给一个 final 变量
-        final String cypherQuery = cypherBuilder.toString();
+        final String cypherQuery = cypher.toString();
 
         try (Session session = neo4jDriver.session()) {
-            // 5. 执行事务
-            return session.writeTransaction(tx -> {
-                        // 2. 在 lambda 内部，使用这个 final 变量
+            return session.executeWrite(tx -> {
                 Result result = tx.run(cypherQuery, params);
                 if (result.hasNext()) {
-                            return result.single().asMap();
+                    return result.single().asMap();
                 } else {
-                            // 如果 MATCH (parent...) 失败 (例如 parentId 不存在)，
-                    throw new ResourceNotFoundException("Failed to create node. Parent node with id '"
-                            + request.getParentId() + "' not found in graph " + graphId);
+                    throw new RuntimeException("Failed to create node.");
                 }
             });
-        }
-        catch (Exception e) {
-            // 捕获所有Neo4j异常并重新抛出
-            throw new RuntimeException("Error in createNodeAndLink: " + e.getMessage(), e);
         }
     }
 
@@ -309,52 +318,6 @@ public class GraphRepository {
             }
         }
     }
-
-
-    // 在 GraphRepository.java 中添加
-
-    /**
-     * 删除节点
-     * 注意：使用 DETACH DELETE 会同时删除与该节点相连的所有边
-     *
-     * @return true 表示删除成功，false 表示节点不存在
-     * @throws CustomGraphException 如果节点有子节点，禁止删除
-     */
-    public boolean deleteNode(long graphId, String nodeId) {
-        try (Session session = neo4jDriver.session()) {
-            return session.writeTransaction(tx -> {
-                // 1. 检查是否有子节点 (出于安全考虑，通常不允许直接删除中间节点)
-                // 我们查找是否有从该节点出发的 'contains' 关系
-                String checkChildrenQuery = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) " +
-                        "OPTIONAL MATCH (n)-[r:contains]->(child) " +
-                        "RETURN count(child) AS childCount";
-
-                Result checkResult = tx.run(checkChildrenQuery, Map.of("graphId", graphId, "nodeId", nodeId));
-
-                if (checkResult.hasNext()) {
-                    long childCount = checkResult.single().get("childCount").asLong();
-                    if (childCount > 0) {
-                        // (!!!) 抛出 30213 错误，防止图谱断裂
-                        throw new CustomGraphException(400, "删除失败：该节点包含下级子节点，请先删除子节点");
-                    }
-                }
-
-                // 2. 执行删除 (DETACH DELETE 会自动删除关联的边，防止Neo4j报错)
-                String deleteQuery = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) " +
-                        "DETACH DELETE n " +
-                        "RETURN count(n) as deletedCount";
-
-                Result deleteResult = tx.run(deleteQuery, Map.of("graphId", graphId, "nodeId", nodeId));
-
-                if (deleteResult.hasNext()) {
-                    return deleteResult.single().get("deletedCount").asLong() > 0;
-                }
-                return false;
-            });
-        }
-    }
-
-    // 在 GraphRepository 类中添加
 
     /**
      * 创建边
@@ -532,6 +495,154 @@ public class GraphRepository {
                     throw new ResourceNotFoundException("更新失败：指定的新源节点或目标节点在图谱中不存在");
                 }
             });
+        }
+    }
+
+
+    /**
+     * 1. 挂载资源 (创建 Resource 节点并连接)
+     */
+    public void bindResource(long graphId, String nodeId, GraphResourceDto.BindRequest req)
+    {
+        String resourceId = "res-" + UUID.randomUUID().toString(); // 生成唯一ID
+
+        try (Session session = neo4jDriver.session()) {
+            session.writeTransaction(tx -> {
+                String cypher =
+                        "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) "
+                                + "CREATE (r:Resource { " + "  resourceId: $resId, "
+                                + "  name: $name, " +   "materialType: $mType, " + "  url: $url, " + "  fileSize: $size, "
+                                + "  isVideo: $isVideo, " + "  description: $desc, "
+                                + "  createdAt: datetime(), " + "  graphId: $graphId " + "}) "
+                                + "CREATE (n)-[:HAS_RESOURCE]->(r)";
+
+                tx.run(cypher, Map.of("nodeId", nodeId,"mType", req.getMaterialType() != null ? req.getMaterialType() : "unknown",
+                        "graphId", graphId, "resId", resourceId, "name", req.getName(), "url", req.getFileUrl(),
+                        "size", req.getFileSize(), "isVideo", req.getIsVideo() != null ? req.getIsVideo() : false,
+                        "desc", req.getDescription() != null ? req.getDescription() : ""));
+                return null;
+            });
+        }
+    }
+
+    public List<GraphResourceDto.ResourceView> getNodeResources(long graphId, String nodeId) {
+        try (Session session = neo4jDriver.session()) {
+            return session.readTransaction(tx -> {
+                String cypher =
+                        // 1. 强匹配节点：加入了 graphId 约束，防止越权 (访问了别的图谱的节点)
+                        "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) " +
+
+                                // 2. 可选匹配资源：即使没有资源，n 也会被查出来
+                                "OPTIONAL MATCH (n)-[:HAS_RESOURCE]->(r:Resource) " +
+
+                                // 3. 返回节点本身 + 资源列表
+                                "RETURN n, r " +
+                                "ORDER BY r.createdAt DESC";
+
+                Result result = tx.run(cypher, Map.of("nodeId", nodeId, "graphId", graphId));
+
+                // (!!!) 关键逻辑：判断节点是否存在
+                // 如果 result 没有任何记录，说明第一句 MATCH n 失败了 -> 节点不存在或不属于该图谱
+                if (!result.hasNext()) {
+                    throw new ResourceNotFoundException("知识点不存在，或不属于当前图谱");
+                }
+
+                // (!!!) 转换结果
+                List<GraphResourceDto.ResourceView> resources = new ArrayList<>();
+                while (result.hasNext()) {
+                    Record record = result.next();
+                    // 因为是 OPTIONAL MATCH，r 可能是 null
+                    org.neo4j.driver.Value rVal = record.get("r");
+                    if (!rVal.isNull()) {
+                        GraphResourceDto.ResourceView view = new GraphResourceDto.ResourceView();
+                        view.setResourceId(rVal.get("resourceId").asString());
+                        view.setName(rVal.get("name").asString());
+                        view.setMaterialType(rVal.get("materialType", "unknown")); // 之前加的字段
+                        view.setUrl(rVal.get("url").asString());
+                        view.setFileSize(rVal.get("fileSize", ""));
+                        view.setIsVideo(rVal.get("isVideo", false));
+                        view.setDescription(rVal.get("description", ""));
+                        resources.add(view);
+                    }
+                }
+                return resources;
+            });
+        }
+    }
+
+
+
+
+
+    /**
+     * (!!!) 新增：检查节点是否存在
+     */
+    public boolean checkNodeExists(long graphId, String nodeId) {
+        try (Session session = neo4jDriver.session()) {
+            return session.readTransaction(tx -> {
+                String query = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) RETURN count(n) as count";
+                Result result = tx.run(query, Map.of("nodeId", nodeId, "graphId", graphId));
+                if (result.hasNext()) {
+                    return result.single().get("count").asLong() > 0;
+                }
+                return false;
+            });
+        }
+    }
+
+
+    /**
+     * (!!!) 修正：删除单个资源 (带校验)
+     */
+    public void deleteResource(long graphId, String resourceId) {
+        try (Session session = neo4jDriver.session()) {
+            session.writeTransaction(tx -> {
+                String cypher =
+                        "MATCH (r:Resource {resourceId: $resId, graphId: $graphId}) " +
+                                "DETACH DELETE r " +
+                                "RETURN count(r) as deletedCount"; // 必须返回删除数量
+
+                Result result = tx.run(cypher, Map.of("resId", resourceId, "graphId", graphId));
+
+                // (!!!) 检查删除结果
+                if (result.hasNext()) {
+                    long count = result.single().get("deletedCount").asLong();
+                    if (count == 0) {
+                        throw new ResourceNotFoundException("资源不存在或已被删除");
+                    }
+                } else {
+                    throw new ResourceNotFoundException("资源不存在");
+                }
+                return null;
+            });
+        }
+    }
+
+    // (!!!) 重要：修改原有的 deleteNode 方法 (级联删除)
+    // 必须替换你原来的 deleteNode 方法
+    public boolean deleteNode(long graphId, String nodeId)
+    {
+        try (Session session = neo4jDriver.session()) {
+            return session.writeTransaction(tx -> {
+                        String checkChildrenQuery =
+                                "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) "
+                                        + "OPTIONAL MATCH (n)-[r:contains]->(child) "
+                                        + "RETURN count(child) AS childCount";
+                        Result checkResult = tx.run(checkChildrenQuery, Map.of("graphId", graphId, "nodeId", nodeId));
+                        if (checkResult.hasNext() && checkResult.single().get("childCount").asLong() > 0) {
+                            throw new CustomGraphException(400, "删除失败：该节点包含下级子节点，请先删除子节点");
+                        }
+
+                        // 2. (!!!) 修改后的删除逻辑：级联删除挂载的资源
+                        String deleteQuery =
+                                "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) "
+                                        + "OPTIONAL MATCH (n)-[:HAS_RESOURCE]->(r:Resource) "
+                                        + "DETACH DELETE n, r "
+                                        + "RETURN count(n) as deletedCount";
+
+                        Result deleteResult = tx.run(deleteQuery, Map.of("graphId", graphId, "nodeId", nodeId));
+                        return deleteResult.hasNext() && deleteResult.single().get("deletedCount").asLong() > 0;
+                    });
         }
     }
 }

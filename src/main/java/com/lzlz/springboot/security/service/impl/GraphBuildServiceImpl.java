@@ -8,16 +8,16 @@ import com.lzlz.springboot.security.exception.ResourceNotFoundException;
 import com.lzlz.springboot.security.mapper.GraphMetadataMapper;
 import com.lzlz.springboot.security.repository.GraphRepository;
 import com.lzlz.springboot.security.service.GraphBuildService;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.InputStream;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -33,125 +33,275 @@ public class GraphBuildServiceImpl implements GraphBuildService {
     // (!!!) 这是 .xlsx 文件的正确 Content Type
     private static final String XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+    // (!!!) 修改点：从配置文件读取，默认值为 5
+    @Value("${graph.limit.max-depth:5}")
+    private int maxDepth;
+
+    // (!!!) 修改点：从配置文件读取，默认值为 2000
+    @Value("${graph.limit.max-nodes:2000}")
+    private int maxNodeCount;
+
+
+    // 定义每一层对应的 Label (根据列索引 0-4)
+    private static final String[] LEVEL_LABELS = {
+            "知识点", // 第0列：模块/章
+            "知识单元",   // 第1列：单元/节
+            "知识单元",  // 第2列：知识点
+            "知识单元",  // 第3列：知识点
+            "知识单元"   // 第4列：知识点
+    };
 
     @Override
-    @Transactional
-    public GraphBuildResponse buildGraphFromDocument(long courseId,String graphName, MultipartFile file) {
+    @Transactional(rollbackFor = Exception.class)
+    public GraphBuildResponse buildGraphFromDocument(long courseId, String graphName, MultipartFile file) {
 
-        // 1. 验证文件
-        if (file.isEmpty() || file.getContentType() == null ||
-                !file.getContentType().equals(XLSX_CONTENT_TYPE)) {
-            // (!!!) 错误码 30201: 消息已更新
-            throw new CustomGraphException(30201, "文件格式不支持，请上传XLSX文件");
-        }
-
-        List<GraphNode> apiNodes = new ArrayList<>();
-        List<GraphEdge> apiEdges = new ArrayList<>();
-
-        // (!!!) 关键：我们需要用Map来处理用“名称”进行关联
-        // 1. 节点名称 -> UUID
-        Map<String, String> nodeNameToUuidMap = new HashMap<>();
-        // 2. 节点名称 -> 其父节点的名称
-        Map<String, String> childToParentNameMap = new HashMap<>();
-
+        List<GraphNode> nodes = new ArrayList<>();
+        List<GraphEdge> edges = new ArrayList<>();
+        // 核心映射：名称 -> UUID (用于去重和查找父节点)
+        Map<String, String> nameToUuidMap = new HashMap<>();
+        // 辅助集合：用于去重边 (防止重复创建 A->B 的关系)
+        Set<String> existingEdges = new HashSet<>();
 
         try (InputStream is = file.getInputStream();
-             XSSFWorkbook workbook = new XSSFWorkbook(is)) { // (!!!) 使用 Apache POI
+             Workbook workbook = new XSSFWorkbook(is)) {
 
-            Sheet sheet = workbook.getSheetAt(0); // 获取第一个工作表
+            // ==========================================
+            // Step 1: 解析【知识树】Sheet (层级结构)
+            // ==========================================
+            Sheet treeSheet = workbook.getSheet("知识树");
+            if (treeSheet == null) throw new RuntimeException("未找到[知识树]工作表");
 
-            // (!!!) Pass 1: 遍历行，创建节点
-            for (Row row : sheet) {
-                // (!!!) 跳过前两行
-                if (row.getRowNum() < 2) {
-                    continue;
+            // 从第2行开始 (Row 1)
+            for (int i = 2; i <= treeSheet.getLastRowNum(); i++) {
+                Row row = treeSheet.getRow(i);
+                if (row == null) continue;
+
+                // 遍历 5 个可能的层级 (A, B, C, D, E)
+                String parentId = null; // 用于记录当前行“上一级”节点的ID
+
+                for (int col = 0; col < maxDepth; col++) {
+                    String name = getCellValue(row.getCell(col));
+                    if (name.isEmpty()) break;
+
+                    String currentId;
+
+                    if (nameToUuidMap.containsKey(name)) {
+                        currentId = nameToUuidMap.get(name);
+                    }
+                    else {
+                        // (!!!) 使用配置变量 maxNodeCount 进行熔断检查
+                        if (nodes.size() >= maxNodeCount) {
+                            throw new CustomGraphException(400, String.format("图谱节点数量超限！当前限制最大 %d 个节点，以保证系统流畅运行。", maxNodeCount));
+                        }
+
+                        currentId = "node-" + UUID.randomUUID().toString();
+                        // 防止数组越界 (如果配置的深度超过了预设Label数组长度)
+                        String label = (col < LEVEL_LABELS.length) ? LEVEL_LABELS[col] : "KnowledgePoint";
+
+                        GraphNode node = GraphNode.builder().nodeId(currentId).name(name).label(label).description("").build();
+                        nodes.add(node);
+                        nameToUuidMap.put(name, currentId);
+                    }
+
+                    // 2. 关系构建逻辑 (从第二列开始)
+                    if (col > 0 && parentId != null) {
+                        // 唯一标识一条边: ParentID -> ChildID
+                        String edgeKey = parentId + "->" + currentId;
+
+                        if (!existingEdges.contains(edgeKey)) {
+                            GraphEdge edge = GraphEdge.builder()
+                                    .edgeId("edge-" + UUID.randomUUID().toString())
+                                    .sourceNodeId(parentId) // 上一列的节点
+                                    .targetNodeId(currentId) // 当前列的节点
+                                    .relationType("contains")
+                                    .build();
+                            edges.add(edge);
+                            existingEdges.add(edgeKey);
+                        }
+                    }
+
+                    // 3. 将当前节点设为下一列的“父节点”
+                    parentId = currentId;
                 }
-                // (!!!) 按您的要求读取列
-                String nodeName = getCellStringValue(row.getCell(0)); // 第1列: 节点名称
-                String nodeType = getCellStringValue(row.getCell(2)); // 第3列: 节点类型
-                String parentName = getCellStringValue(row.getCell(3)); // 第4列: 上级节点名称
-
-                // 跳过无效行
-                if (nodeName == null || nodeName.isBlank() || nodeType == null || nodeType.isBlank()) {
-                    continue;
-                }
-
-                String newNodeId = UUID.randomUUID().toString();
-                nodeNameToUuidMap.put(nodeName, newNodeId);
-
-                if (parentName != null && !parentName.isBlank()) {
-                    childToParentNameMap.put(nodeName, parentName);
-                }
-
-                apiNodes.add(GraphNode.builder()
-                        .nodeId(newNodeId)
-                        .name(nodeName)
-                        .label(nodeType) // (!!!) 使用第3列的类型
-                        .description("") // (!!!) 您的XLSX中没有描述，设为空
-                        .build());
             }
 
-            // (!!!) Pass 2: 遍历Map，创建边
-            for (Map.Entry<String, String> entry : childToParentNameMap.entrySet()) {
-                String childName = entry.getKey();
-                String parentName = entry.getValue();
+            // ==========================================
+            // Step 2: 解析【关系】Sheet (网状连接)
+            // ==========================================
+            Sheet relationSheet = workbook.getSheet("关系");
+            if (relationSheet != null) {
+                // 假设表头: 源节点(0), 关系类型(1), 目标节点(2)
+                for (int i = 1; i <= relationSheet.getLastRowNum(); i++) {
+                    Row row = relationSheet.getRow(i);
+                    if (row == null) continue;
 
-                // (!!!) 用名称查找UUID
-                String sourceUuid = nodeNameToUuidMap.get(parentName);
-                String targetUuid = nodeNameToUuidMap.get(childName);
+                    String sourceName = getCellValue(row.getCell(0));
+                    String relType = getCellValue(row.getCell(1));
+                    String targetName = getCellValue(row.getCell(2));
 
-                // 只有父子节点都存在时才创建边
-                if (sourceUuid != null && targetUuid != null) {
-                    apiEdges.add(GraphEdge.builder()
-                            .edgeId(UUID.randomUUID().toString())
-                            .sourceNodeId(sourceUuid)
-                            .targetNodeId(targetUuid)
-                            .relationType("contains") // 默认关系
-                            .build());
+                    String sourceUuid = nameToUuidMap.get(sourceName);
+                    String targetUuid = nameToUuidMap.get(targetName);
+
+                    // 只有当两个节点都已存在时，才创建关系
+                    if (sourceUuid != null && targetUuid != null && !relType.isEmpty()) {
+                        GraphEdge customEdge = GraphEdge.builder()
+                                .edgeId("edge-" + UUID.randomUUID().toString())
+                                .sourceNodeId(sourceUuid)
+                                .targetNodeId(targetUuid)
+                                .relationType(relType)
+                                .build();
+                        edges.add(customEdge);
+                    }
                 }
             }
 
-        } catch (Exception e) { // 捕获所有解析异常 (IO, POI, etc.)
-            // (!!!) 错误码 30202: 消息已更新
-            throw new CustomGraphException(30202, "文件已加密、损坏或XLSX解析失败: " + e.getMessage());
-        }
-
-        if (apiNodes.isEmpty()) {
-            // (!!!) 错误码 30203
-            throw new CustomGraphException(30203, "无法提取有效信息，请检查XLSX文件");
-        }
-
-        // --- Pass 3: 保存到数据库 (此后逻辑不变) ---
-
-        // 1. 准备元数据
-        GraphMetadata metadata = new GraphMetadata();
-        metadata.setCourseId(courseId);
-        // 你可以增加一个检查，防止传入的名称为空
-        if (graphName != null && !graphName.isBlank()) {
+            // ==========================================
+            // Step 3: 保存到数据库
+            // ==========================================
+            GraphMetadata metadata = new GraphMetadata();
+            metadata.setCourseId(courseId);
             metadata.setName(graphName);
-        } else {
-            // 如果名称为空，你可以抛出异常，或者使用一个默认值
-            // throw new CustomGraphException(30204, "图谱名称不能为空");
-            // 或者:
-            metadata.setName("未命名图谱");
+            metadata.setCreatedAt(LocalDateTime.now());
+            metadataMapper.insert(metadata);
+
+            long newGraphId = metadata.getGraphId();
+            graphRepository.saveGraph(newGraphId, nodes, edges);
+
+            return GraphBuildResponse.builder()
+                    .graphId(newGraphId)
+                    .nodes(nodes)
+                    .edges(edges)
+                    .build();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            throw new RuntimeException("图谱生成失败: " + e.getMessage());
         }
-
-        // 2. 保存到MySQL (使用MP)
-        metadataMapper.insert(metadata);
-
-        // 3. 获取MySQL生成的自增ID
-        long newGraphId = metadata.getGraphId();
-
-        // 4. 保存图谱结构到Neo4j
-        graphRepository.saveGraph(newGraphId, apiNodes, apiEdges);
-
-        // 5. 返回成功响应
-        return GraphBuildResponse.builder()
-                .graphId(newGraphId)
-                .nodes(apiNodes)
-                .edges(apiEdges)
-                .build();
     }
+
+    private String getCellValue(Cell cell) {
+        if (cell == null) return "";
+        cell.setCellType(CellType.STRING);
+        return cell.getStringCellValue().trim();
+    }
+//    @Override
+//    @Transactional
+//    public GraphBuildResponse buildGraphFromDocument(long courseId,String graphName, MultipartFile file) {
+//
+//        // 1. 验证文件
+//        if (file.isEmpty() || file.getContentType() == null ||
+//                !file.getContentType().equals(XLSX_CONTENT_TYPE)) {
+//            // (!!!) 错误码 30201: 消息已更新
+//            throw new CustomGraphException(30201, "文件格式不支持，请上传XLSX文件");
+//        }
+//
+//        List<GraphNode> apiNodes = new ArrayList<>();
+//        List<GraphEdge> apiEdges = new ArrayList<>();
+//
+//        // (!!!) 关键：我们需要用Map来处理用“名称”进行关联
+//        // 1. 节点名称 -> UUID
+//        Map<String, String> nodeNameToUuidMap = new HashMap<>();
+//        // 2. 节点名称 -> 其父节点的名称
+//        Map<String, String> childToParentNameMap = new HashMap<>();
+//
+//
+//        try (InputStream is = file.getInputStream();
+//             XSSFWorkbook workbook = new XSSFWorkbook(is)) { // (!!!) 使用 Apache POI
+//
+//            Sheet sheet = workbook.getSheetAt(0); // 获取第一个工作表
+//
+//            // (!!!) Pass 1: 遍历行，创建节点
+//            for (Row row : sheet) {
+//                // (!!!) 跳过前两行
+//                if (row.getRowNum() < 2) {
+//                    continue;
+//                }
+//                // (!!!) 按您的要求读取列
+//                String nodeName = getCellStringValue(row.getCell(0)); // 第1列: 节点名称
+//                String nodeType = getCellStringValue(row.getCell(2)); // 第3列: 节点类型
+//                String parentName = getCellStringValue(row.getCell(3)); // 第4列: 上级节点名称
+//
+//                // 跳过无效行
+//                if (nodeName == null || nodeName.isBlank() || nodeType == null || nodeType.isBlank()) {
+//                    continue;
+//                }
+//
+//                String newNodeId = UUID.randomUUID().toString();
+//                nodeNameToUuidMap.put(nodeName, newNodeId);
+//
+//                if (parentName != null && !parentName.isBlank()) {
+//                    childToParentNameMap.put(nodeName, parentName);
+//                }
+//
+//                apiNodes.add(GraphNode.builder()
+//                        .nodeId(newNodeId)
+//                        .name(nodeName)
+//                        .label(nodeType) // (!!!) 使用第3列的类型
+//                        .description("") // (!!!) 您的XLSX中没有描述，设为空
+//                        .build());
+//            }
+//
+//            // (!!!) Pass 2: 遍历Map，创建边
+//            for (Map.Entry<String, String> entry : childToParentNameMap.entrySet()) {
+//                String childName = entry.getKey();
+//                String parentName = entry.getValue();
+//
+//                // (!!!) 用名称查找UUID
+//                String sourceUuid = nodeNameToUuidMap.get(parentName);
+//                String targetUuid = nodeNameToUuidMap.get(childName);
+//
+//                // 只有父子节点都存在时才创建边
+//                if (sourceUuid != null && targetUuid != null) {
+//                    apiEdges.add(GraphEdge.builder()
+//                            .edgeId(UUID.randomUUID().toString())
+//                            .sourceNodeId(sourceUuid)
+//                            .targetNodeId(targetUuid)
+//                            .relationType("contains") // 默认关系
+//                            .build());
+//                }
+//            }
+//
+//        } catch (Exception e) { // 捕获所有解析异常 (IO, POI, etc.)
+//            // (!!!) 错误码 30202: 消息已更新
+//            throw new CustomGraphException(30202, "文件已加密、损坏或XLSX解析失败: " + e.getMessage());
+//        }
+//
+//        if (apiNodes.isEmpty()) {
+//            // (!!!) 错误码 30203
+//            throw new CustomGraphException(30203, "无法提取有效信息，请检查XLSX文件");
+//        }
+//
+//        // --- Pass 3: 保存到数据库 (此后逻辑不变) ---
+//
+//        // 1. 准备元数据
+//        GraphMetadata metadata = new GraphMetadata();
+//        metadata.setCourseId(courseId);
+//        // 你可以增加一个检查，防止传入的名称为空
+//        if (graphName != null && !graphName.isBlank()) {
+//            metadata.setName(graphName);
+//        } else {
+//            // 如果名称为空，你可以抛出异常，或者使用一个默认值
+//            // throw new CustomGraphException(30204, "图谱名称不能为空");
+//            // 或者:
+//            metadata.setName("未命名图谱");
+//        }
+//
+//        // 2. 保存到MySQL (使用MP)
+//        metadataMapper.insert(metadata);
+//
+//        // 3. 获取MySQL生成的自增ID
+//        long newGraphId = metadata.getGraphId();
+//
+//        // 4. 保存图谱结构到Neo4j
+//        graphRepository.saveGraph(newGraphId, apiNodes, apiEdges);
+//
+//        // 5. 返回成功响应
+//        return GraphBuildResponse.builder()
+//                .graphId(newGraphId)
+//                .nodes(apiNodes)
+//                .edges(apiEdges)
+//                .build();
+//    }
 
     /**
      * 安全地获取单元格的字符串值 (防止 NullPointerException)

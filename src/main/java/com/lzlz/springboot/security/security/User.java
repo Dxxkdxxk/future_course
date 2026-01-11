@@ -50,7 +50,7 @@ public class User implements UserDetails {
      **/
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        System.out.println(role);
+        System.out.println(role+System.currentTimeMillis());
         return List.of(role).stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());

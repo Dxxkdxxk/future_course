@@ -35,14 +35,13 @@ public class QuestionController {
         Map<String, String> data = new HashMap<>();
         data.put("id", questionId);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created(data));
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(data));
     }
 
     /**
      * Excel 批量导入
      */
-    @PostMapping("/Bank")
+    @PostMapping("/batch")
     public ResponseEntity<ApiResponse<Map<String, Integer>>> importQuestions(
             @PathVariable Long courseId,
             @RequestParam("file") MultipartFile file) {

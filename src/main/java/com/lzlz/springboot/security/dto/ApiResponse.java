@@ -9,8 +9,8 @@ public class ApiResponse<T> {
     private String msg;
     private T data;
 
-    // 构造函数私有，强制使用静态方法
-    private ApiResponse(int code, String msg, T data) {
+
+    public ApiResponse(int code, String msg, T data) {
         this.code = code;
         this.msg = msg;
         this.data = data;

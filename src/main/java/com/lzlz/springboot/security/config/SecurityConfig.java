@@ -64,8 +64,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/student/**").permitAll()
                         .requestMatchers("/api/v1/course/**").permitAll()
                         // 允许教师访问学生管理接口
-                        .requestMatchers("/api/v1/course/*/students/**").permitAll() // 教师
-                        .requestMatchers("/api/v1/course/*/question/**").authenticated() // 教师
+                        .requestMatchers("/api/v1/course/**").permitAll() // 教师
+                        .requestMatchers("/api/v1/chapters/**").permitAll() // 教师
+                        //.requestMatchers("/api/v1/course/*/question/**").authenticated() // 教师
                         .anyRequest()
                         .authenticated()
                 )
