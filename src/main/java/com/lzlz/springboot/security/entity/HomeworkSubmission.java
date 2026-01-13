@@ -16,7 +16,7 @@ public class HomeworkSubmission {
     private Long id;
 
     private Long homeworkId;
-    private Long studentId;
+    private int studentId;
 
     // 作业附件URL集合 (Mock模式下传字符串即可)
     private String attachmentUrls;

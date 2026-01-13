@@ -7,7 +7,7 @@ import java.util.List;
 @Data
 public class StudentSubmissionDto {
     // 学生信息
-    private Long studentId;
+    private int studentId;
     private String studentName;
     private String studentEmail;
 

@@ -89,7 +89,7 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void submitHomework(Long courseId,Long homeworkId, Long studentId, MultipartFile[] files, String content) {
+    public void submitHomework(Long courseId,Long homeworkId, int studentId, MultipartFile[] files, String content) {
         validateRelation(courseId, homeworkId, null);
         StringBuilder objectNames = new StringBuilder();
         System.out.println(files.length);
@@ -142,7 +142,7 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
     }
 
     @Override
-    public HomeworkSubmission getMySubmission(Long homeworkId, Long studentId) {
+    public HomeworkSubmission getMySubmission(Long homeworkId, int studentId) {
         QueryWrapper<HomeworkSubmission> wrapper = new QueryWrapper<>();
         wrapper.eq("homework_id", homeworkId);
         wrapper.eq("student_id", studentId);
@@ -161,18 +161,20 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
         if (list.isEmpty()) return Collections.emptyList();
 
         // 2. 查学生信息
-        // 假设 User ID 已改为 Long，如果还是 Integer，请改为: s.getStudentId().intValue()
-        // 建议：转为 Integer 列表去查 User 表
+// 2. 查学生信息
+// (前提：实体类 s.getStudentId() 和 User.getId() 都已修改为 Integer 类型)
         List<Integer> studentIds = list.stream()
-                .map(s -> s.getStudentId().intValue()) // 强转为 Integer
+                .map(s -> s.getStudentId()) // 直接获取 Integer，不需要 .intValue() 或强转
                 .distinct()
                 .collect(Collectors.toList());
 
-// 查询
+// 批量查询 (MyBatis-Plus 会自动处理 List<Integer>)
         List<User> students = userMapper.selectBatchIds(studentIds);
-        // 显式将 User 的 Integer ID 转换为 Long 作为 Map 的 Key
-        Map<Long, User> studentMap = students.stream()
-                .collect(Collectors.toMap(u -> Long.valueOf(u.getId()), u -> u));
+
+// 转为 Map
+// (!!!) 修改点：Key 的类型统一为 Integer，不再强转为 Long
+        Map<Integer, User> studentMap = students.stream()
+                .collect(Collectors.toMap(User::getId, u -> u));
 
         // 3. 组装数据 & 生成链接
         List<StudentSubmissionDto> dtos = new ArrayList<>();

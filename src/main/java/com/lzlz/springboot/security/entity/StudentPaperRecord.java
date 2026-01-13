@@ -12,7 +12,7 @@ public class StudentPaperRecord {
     private Long id;
 
     @TableField("student_id")
-    private Long studentId;
+    private int studentId;
 
     @TableField("paper_id")
     private Long paperId;

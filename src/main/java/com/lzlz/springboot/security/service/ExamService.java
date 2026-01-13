@@ -142,7 +142,7 @@ public class ExamService {
     // 4. [学生] 交卷：自动判分
     // ==========================================
     @Transactional(rollbackFor = Exception.class)
-    public ExamDto.ResultView submitExam(Long studentId, Long chapterId, ExamDto.SubmitRequest request) {
+    public ExamDto.ResultView submitExam(int studentId, Long chapterId, ExamDto.SubmitRequest request) {
         // A. 重新获取试卷信息以进行比对
         QueryWrapper<ChapterPaperRef> refWrapper = new QueryWrapper<>();
         refWrapper.eq("chapter_id", chapterId);

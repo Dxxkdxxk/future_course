@@ -65,7 +65,7 @@ public class ExamController {
             @RequestBody ExamDto.SubmitRequest request,
             @AuthenticationPrincipal User user) { // 获取当前登录用户
 
-        Long studentId = Long.valueOf(user.getId());
+        int studentId = user.getId();
         ExamDto.ResultView result = examService.submitExam(studentId, chapterId, request);
         return ResponseEntity.ok(new ApiResponse<>(200, "交卷成功", result));
     }

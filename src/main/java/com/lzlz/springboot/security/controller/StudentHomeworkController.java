@@ -37,7 +37,7 @@ public class StudentHomeworkController {
             @RequestParam(value = "content", required = false) String content,
             @AuthenticationPrincipal User user
     ) {
-        submissionService.submitHomework(courseId, homeworkId, user.getId().longValue(), files, content);
+        submissionService.submitHomework(courseId, homeworkId, user.getId(), files, content);
         return ApiResponse.success(null);
     }
 

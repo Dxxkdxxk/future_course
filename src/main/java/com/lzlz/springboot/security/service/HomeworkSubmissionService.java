@@ -10,11 +10,11 @@ public interface HomeworkSubmissionService {
     /**
      * 学生提交作业
      */
-    void submitHomework(Long courseId, Long homeworkId, Long studentId, MultipartFile[] files, String content);
+    void submitHomework(Long courseId, Long homeworkId, int studentId, MultipartFile[] files, String content);
     /**
      * 获取我的提交记录 (学生查详情)
      */
-    HomeworkSubmission getMySubmission(Long homeworkId, Long studentId);
+    HomeworkSubmission getMySubmission(Long homeworkId, int studentId);
 
     /**
      * 获取某作业的提交名单 (教师端 - 聚合了文件链接和学生信息)
