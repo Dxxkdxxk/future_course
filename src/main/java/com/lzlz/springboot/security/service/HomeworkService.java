@@ -2,18 +2,24 @@ package com.lzlz.springboot.security.service;
 
 import com.lzlz.springboot.security.dto.CreateHomeworkRequest;
 import com.lzlz.springboot.security.dto.HomeworkDetailResponse;
+import com.lzlz.springboot.security.dto.StudentHomeworkDetailDto;
+import com.lzlz.springboot.security.dto.StudentSubmissionDto; // 引入 DTO
 import com.lzlz.springboot.security.entity.Homework;
-
 import java.util.List;
 
 public interface HomeworkService {
     void createHomework(Long courseId, CreateHomeworkRequest request);
 
-    // 教师端：获取所有作业（包括草稿）
     List<Homework> getHomeworkList(Long courseId);
 
-    // (新增) 学生端：获取已发布的作业列表
-    List<Homework> getHomeworkListForStudent(Long courseId);
+    List<StudentHomeworkDetailDto> getHomeworkListForStudent(Long courseId, Long studentId);
 
-    HomeworkDetailResponse getHomeworkDetailForTeacher(Long homeworkId);
+    HomeworkDetailResponse getHomeworkDetailForTeacher(Long courseId,Long homeworkId);
+
+    /**
+     * [新增] 获取学生视角的作业详情 (包含作业信息 + 自己的提交信息)
+     */
+    StudentHomeworkDetailDto getHomeworkDetailForStudent(Long courseId, Long homeworkId, Long studentId)
+    ;
+
 }
