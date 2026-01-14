@@ -62,6 +62,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/user").hasRole("USER") // 只允许用户访问的页面
                         .requestMatchers("/api/v1/teacher/course/**").hasAuthority("teacher")
                         .requestMatchers("/api/v1/student/course/**").hasAuthority("student")
+                        .requestMatchers("/api/v1/teacher/exam/**").hasAuthority("teacher")
+                        .requestMatchers("/api/v1/student/exam/**").hasAuthority("student")
                         .requestMatchers("/api/v1/teacher/**").permitAll() // 暂时允许所有人访问
                         .requestMatchers("/api/v1/student/**").permitAll()
                         .requestMatchers("/api/v1/course/**").permitAll()
