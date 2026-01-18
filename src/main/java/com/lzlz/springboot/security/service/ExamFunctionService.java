@@ -44,4 +44,9 @@ public interface ExamFunctionService {
      * [新增] 获取学生考试结果
      */
     ExamFunctionDto.StudentResultView getStudentExamResult(Long taskId, Integer studentId);
+
+    /**
+     * [修改] 根据课程ID获取学生所在的班级
+     */
+    ExamFunctionDto.MyClassInfo getStudentClassByCourse(Integer studentId, Long courseId);
 }

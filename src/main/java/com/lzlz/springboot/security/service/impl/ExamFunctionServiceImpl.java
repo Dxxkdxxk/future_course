@@ -41,6 +41,8 @@ public class ExamFunctionServiceImpl implements ExamFunctionService {
     // [修复 3] 注入 UserMapper
     @Autowired private
     UserMapper userMapper;
+    // 记得在类开头注入 CourseMapper
+    @Autowired private CourseMapper courseMapper;
 
 
     @Override
@@ -784,6 +786,51 @@ public class ExamFunctionServiceImpl implements ExamFunctionService {
         view.setQuestions(itemList);
         return view;
     }
+
+
+
+    @Override
+    public ExamFunctionDto.MyClassInfo getStudentClassByCourse(Integer studentId, Long courseId) {
+        // 1. 查出学生加入的所有班级ID
+        QueryWrapper<ClassStudent> relationWrapper = new QueryWrapper<>();
+        relationWrapper.eq("user_id", studentId);
+        List<ClassStudent> relations = classStudentMapper.selectList(relationWrapper);
+
+        if (relations.isEmpty()) {
+            // 学生没加入任何班级
+            return null;
+        }
+
+        List<Long> myClassIds = relations.stream()
+                .map(ClassStudent::getClassId)
+                .toList();
+
+        // 2. 在这些班级中，查找属于指定 courseId 的那个班级
+        QueryWrapper<CourseClass> classWrapper = new QueryWrapper<>();
+        classWrapper.in("id", myClassIds);     // 限制范围：我加入的班级
+        classWrapper.eq("course_id", courseId); // 限制范围：当前课程
+        classWrapper.last("LIMIT 1");          // 理论上一个学生一门课只在一个班
+
+        CourseClass targetClass = courseClassMapper.selectOne(classWrapper);
+
+        if (targetClass == null) {
+            // 学生加入了别的班，但没加入这门课的班级
+            return null;
+        }
+
+        // 3. 补充课程信息 (为了返回 CourseName)
+        Course course = courseMapper.selectById(courseId);
+
+        // 4. 组装返回对象
+        ExamFunctionDto.MyClassInfo info = new ExamFunctionDto.MyClassInfo();
+        info.setClassId(targetClass.getId());
+        info.setClassName(targetClass.getName());
+        info.setCourseId(courseId);
+        info.setCourseName(course != null ? course.getName() : "未知课程");
+
+        return info;
+    }
+
 
     /**
      * [辅助方法] 填空题判分逻辑

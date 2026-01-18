@@ -247,4 +247,21 @@ public class ExamFunctionDto {
         private Integer gainedScore;   // 得分
         private Boolean isCorrect;     // 是否正确
     }
+
+
+    // ... 在 ExamFunctionDto 类中 ...
+
+    /**
+     * [新增] 学生加入的班级信息
+     */
+    @Data
+    public static class MyClassInfo {
+        private Long classId;
+        private String className;   // 班级名称 (如: 2024秋季Java一班)
+
+        private Long courseId;
+        private String courseName;  // 课程名称 (如: Java程序设计)
+
+        private String teacherName; // 任课教师 (可选)
+    }
 }
