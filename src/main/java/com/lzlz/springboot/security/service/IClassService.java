@@ -1,7 +1,8 @@
 package com.lzlz.springboot.security.service;
 
 import com.lzlz.springboot.security.entity.CourseClass;
-import com.lzlz.springboot.security.security.User; // 引用现有User
+import com.lzlz.springboot.security.entity.User;
+
 import java.util.List;
 
 public interface IClassService {

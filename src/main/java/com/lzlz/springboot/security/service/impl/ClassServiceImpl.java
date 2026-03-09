@@ -3,11 +3,12 @@ package com.lzlz.springboot.security.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lzlz.springboot.security.entity.ClassStudent;
 import com.lzlz.springboot.security.entity.CourseClass;
+import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.exception.CustomGraphException; // 复用你的异常类
 import com.lzlz.springboot.security.mapper.ClassStudentMapper;
 import com.lzlz.springboot.security.mapper.CourseClassMapper;
 import com.lzlz.springboot.security.mapper.UserMapper;
-import com.lzlz.springboot.security.security.User;
+
 import com.lzlz.springboot.security.service.IClassService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

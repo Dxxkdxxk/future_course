@@ -5,7 +5,7 @@ import com.lzlz.springboot.security.dto.ExamFunctionDto;
 import com.lzlz.springboot.security.entity.*;
 import com.lzlz.springboot.security.mapper.*;
 // [修复 2] 导入 User 类
-import com.lzlz.springboot.security.security.User;
+
 import com.lzlz.springboot.security.service.ExamFunctionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

@@ -2,7 +2,8 @@ package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.ExamFunctionDto;
-import com.lzlz.springboot.security.security.User;
+
+import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.service.ExamFunctionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;

@@ -4,8 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.SimpleUserDto;
 import com.lzlz.springboot.security.entity.CourseClass;
+import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.mapper.UserMapper;
-import com.lzlz.springboot.security.security.User;
+
 import com.lzlz.springboot.security.service.IClassService;
 import lombok.Data;
 import org.springframework.beans.factory.annotation.Autowired;

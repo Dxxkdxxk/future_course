@@ -3,7 +3,8 @@ package com.lzlz.springboot.security.controller;
 import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.StudentHomeworkDetailDto;
 import com.lzlz.springboot.security.entity.Homework; // 假设你有这个实体
-import com.lzlz.springboot.security.security.User; // 你的 User 类
+
+import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.service.HomeworkService;
 import com.lzlz.springboot.security.service.HomeworkSubmissionService;
 import org.springframework.beans.factory.annotation.Autowired;

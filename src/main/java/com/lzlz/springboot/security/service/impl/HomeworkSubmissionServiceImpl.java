@@ -3,9 +3,10 @@ package com.lzlz.springboot.security.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lzlz.springboot.security.dto.StudentSubmissionDto;
 import com.lzlz.springboot.security.entity.HomeworkSubmission;
+import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.mapper.HomeworkSubmissionMapper;
 import com.lzlz.springboot.security.mapper.UserMapper;
-import com.lzlz.springboot.security.security.User;
+
 import com.lzlz.springboot.security.service.HomeworkSubmissionService;
 import com.lzlz.springboot.security.service.MinIOService;
 import lombok.extern.slf4j.Slf4j;

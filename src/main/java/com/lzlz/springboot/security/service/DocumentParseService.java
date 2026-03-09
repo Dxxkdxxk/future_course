@@ -292,23 +292,23 @@ public class DocumentParseService {
      * 判断段落是否为标题（通过字号阈值）
      */
     private boolean isTitleParagraph(XWPFParagraph paragraph) {
-        try {
-            // 获取段落字号（优先从段落样式获取，无则从第一个文本段获取）
-            CTPPr ctppr = paragraph.getCTP().getPPr();
-            if (ctppr != null && ctppr.getRPr() != null && ctppr.getRPr().getSz() != null) {
-                return ctppr.getRPr().getSz().getVal().intValue() >= TITLE_FONT_SIZE_THRESHOLD;
-            }
-            // 从文本段获取字号
-            if (!paragraph.getRuns().isEmpty()) {
-                CTRPr ctrpr = paragraph.getRuns().get(0).getCTR().getRPr();
-                if (ctrpr != null && ctrpr.getSz() != null) {
-                    return ctrpr.getSz().getVal().intValue() >= TITLE_FONT_SIZE_THRESHOLD;
-                }
-            }
-        } catch (Exception e) {
-            log.debug("获取段落字号失败，默认判定为非标题", e);
-        }
-        // 无法获取字号时，默认返回false（避免误判）
+//        try {
+//            // 获取段落字号（优先从段落样式获取，无则从第一个文本段获取）
+//            CTPPr ctppr = paragraph.getCTP().getPPr();
+//            if (ctppr != null && ctppr.getRPr() != null && ctppr.getRPr().getSz() != null) {
+//                return ctppr.getRPr().getSz().getVal().intValue() >= TITLE_FONT_SIZE_THRESHOLD;
+//            }
+//            // 从文本段获取字号
+//            if (!paragraph.getRuns().isEmpty()) {
+//                CTRPr ctrpr = paragraph.getRuns().get(0).getCTR().getRPr();
+//                if (ctrpr != null && ctrpr.getSz() != null) {
+//                    return ctrpr.getSz().getVal().intValue() >= TITLE_FONT_SIZE_THRESHOLD;
+//                }
+//            }
+//        } catch (Exception e) {
+//            log.debug("获取段落字号失败，默认判定为非标题", e);
+//        }
+//        // 无法获取字号时，默认返回false（避免误判）
         return false;
     }
     private List<Chapter> parsePdfChapters(File pdfFile, Long textbookId) throws Exception {
