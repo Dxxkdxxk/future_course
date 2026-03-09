@@ -1,10 +1,10 @@
 package com.lzlz.springboot.security.controller;
 
-import com.lzlz.springboot.security.controller.domain.AuthRequest;
+import com.lzlz.springboot.security.domain.AuthRequest;
 import com.lzlz.springboot.security.jwt.JwtTokenProvider;
 import com.lzlz.springboot.security.response.ApiResponse;
 import com.lzlz.springboot.security.security.CustomUserDetailsService;
-import com.lzlz.springboot.security.security.User;
+import com.lzlz.springboot.security.entity.User;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -13,8 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/v1/auth")
 public class AuthController {

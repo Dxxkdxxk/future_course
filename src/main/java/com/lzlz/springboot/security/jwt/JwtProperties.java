@@ -9,6 +9,5 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "pkslow.jwt")
 public class JwtProperties {
     private String secretKey = "pkslow.key";
-    private long validityInMs = 3600_000;
-
+    private long validityInMs = 100000_000;
 }

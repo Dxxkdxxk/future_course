@@ -1,5 +1,6 @@
 package com.lzlz.springboot.security.security;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;

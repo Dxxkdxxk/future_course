@@ -1,4 +1,4 @@
-package com.lzlz.springboot.security.controller.domain;
+package com.lzlz.springboot.security.domain;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
