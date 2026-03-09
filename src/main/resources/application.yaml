@@ -1,35 +1,49 @@
 pkslow:
   jwt:
     secretKey: daf66e01593f61a15b857cf433aae03a005812b31234e149036bcc8dee755dbb
-    validityInMs: 600000
+    validityInMs: 86400000
+
 server:
   port: 8080
 spring:
   main:
     allow-circular-references: true
   datasource:
-    url: jdbc:mysql://localhost:3306/login_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowMultiQueries=true&useSSL=false
+    url: jdbc:mysql://localhost:3306/platform_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
-    password: liuzheng
+    password: 12345678
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
   servlet:
     multipart:
-      max-file-size: 5120MB
-      max-request-size: 5120MB
-  # 异步线程池配置（用于文档分节）
-  task:
-    execution:
-      pool:
-        core-size: 4  # 核心线程数（CPU核心数）
-        max-size: 8    # 最大线程数
-        queue-capacity: 100  # 队列容量
-        keep-alive: 60s      # 空闲线程存活时间
-      thread-name-prefix: textbook-parse-  # 线程名前缀
+      max-file-size: 10MB
+      max-request-size: 10MB
+
   mybatis-plus:
     mapper-locations: classpath:/mappers/*.xml
 
-# MinIO配置
+    configuration:
+      log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+
+neo4j:
+  uri: bolt://8.152.220.164:7687
+  username: neo4j
+  password: WLKCxm159357
+
+
+graph:
+  limit:
+    # 图谱构建最大层级深度 (对应 Excel 的列数 0-4)
+    max-depth: 5
+    # 单个图谱最大节点数量限制 (熔断保护)
+    max-nodes: 2000
+
+
+
+# MinIO配置 (新增)
 minio:
   endpoint: http://8.152.220.164:9000  # MinIO服务地址
-  access-key: 9eBv4Rt6          # 访问密钥
-  secret-key: 3a7W5Mz8          # 秘密密钥
-  bucket: test-bucket         # 存储教材的桶名（需提前创建）
+  access-key: 9eBv4Rt6                 # 访问密钥
+  secret-key: 3a7W5Mz8                 # 秘密密钥
+  bucket: homework-bucket              # 存储作业的桶
