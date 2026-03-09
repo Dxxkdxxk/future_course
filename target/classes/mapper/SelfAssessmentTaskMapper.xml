@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- namespace 必须对应 Mapper 接口的全类名 -->
+<mapper namespace="com.lzlz.springboot.security.mapper.SelfAssessmentTaskMapper">
+
+    <!-- 定义结果集映射（可选，显式映射更安全，避免字段映射错误） -->
+    <resultMap id="SelfAssessmentTaskResultMap" type="com.lzlz.springboot.security.entity.SelfAssessmentTask">
+        <id column="id" property="id" />
+        <result column="teacher_id" property="teacherId" />
+        <result column="course_id" property="courseId" />
+        <result column="task_title" property="taskTitle" />
+        <result column="task_desc" property="taskDesc" />
+        <result column="publish_time" property="publishTime" />
+        <result column="end_time" property="endTime" />
+        <result column="status" property="status" />
+    </resultMap>
+
+    <!-- selectByTeacherId 方法：id 必须与接口方法名一致 -->
+    <select id="selectByTeacherId" parameterType="java.lang.Long" resultMap="SelfAssessmentTaskResultMap">
+        SELECT id, teacher_id, course_id, task_title, task_desc, publish_time, end_time, status
+        FROM self_assessment_task
+        WHERE teacher_id = #{teacherId}
+        ORDER BY publish_time DESC
+    </select>
+
+    <select id="selectValidTaskForStudent" parameterType="java.lang.Long" resultMap="SelfAssessmentTaskResultMap">
+        SELECT t.id, t.teacher_id, t.course_id, t.task_title, t.task_desc, t.publish_time, t.end_time, t.status
+        FROM self_assessment_task t
+        WHERE t.status = 'valid'
+          AND (t.end_time IS NULL OR t.end_time > NOW())
+          AND NOT EXISTS (
+            SELECT 1 FROM self_assessment_record r
+            WHERE r.task_id = t.id AND r.student_id = #{studentId}
+        )
+        ORDER BY t.publish_time DESC
+    </select>
+</mapper>

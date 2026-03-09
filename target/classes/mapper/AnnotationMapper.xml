@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!-- 注意namespace也要匹配真实的Mapper包名 -->
+<mapper namespace="com.lzlz.springboot.security.mapper.AnnotationMapper">
+
+    <select id="selectByStudentAndTextbook" resultType="com.lzlz.springboot.security.entity.Annotation">
+        SELECT
+            id, student_id, resource_id, start_offset, end_offset,
+            selected_text, highlight_color, annotation_type, comment, create_time, minio_object_name
+        FROM annotation
+        WHERE student_id = #{studentId}
+          AND resource_id = #{resourceId}
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>
