@@ -27,11 +27,25 @@ spring:
     configuration:
       log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: ${REDIS_DB:0}
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 16
+          max-idle: 8
+          min-idle: 2
+          max-wait: 3000ms
+
 
 neo4j:
-  uri: bolt://8.152.220.164:7687
+  uri: bolt://127.0.0.1:7687
   username: neo4j
-  password: WLKCxm159357
+  password: 12345678
 
 
 graph:
@@ -49,3 +63,22 @@ minio:
   access-key: 9eBv4Rt6                 # 访问密钥
   secret-key: 3a7W5Mz8                 # 秘密密钥
   bucket: homework-bucket              # 存储作业的桶
+
+
+dify:
+  api:
+    url: http://localhost
+    homeworkkey: test
+    expkey: test
+    Databasekey: test
+    questiongenekey: test
+    chatkey: test
+
+cache:
+  ttl:
+    course-list-seconds: 300
+    course-detail-seconds: 300
+    homework-list-seconds: 300
+    homework-detail-teacher-seconds: 300
+    class-list-seconds: 300
+    question-list-seconds: 300

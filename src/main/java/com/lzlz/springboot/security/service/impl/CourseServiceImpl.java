@@ -1,31 +1,65 @@
 package com.lzlz.springboot.security.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.lzlz.springboot.security.constants.RedisKeys;
 import com.lzlz.springboot.security.dto.CourseCreateDto;
 import com.lzlz.springboot.security.dto.CourseUpdateDto;
 import com.lzlz.springboot.security.entity.Course;
 import com.lzlz.springboot.security.exception.ResourceNotFoundException;
 import com.lzlz.springboot.security.mapper.CourseMapper;
 import com.lzlz.springboot.security.service.ICourseService;
+import com.lzlz.springboot.security.service.RedisCacheService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> implements ICourseService {
 
+    private final RedisCacheService redisCacheService;
+
+    @Value("${cache.ttl.course-list-seconds:300}")
+    private long courseListTtlSeconds;
+
+    @Value("${cache.ttl.course-detail-seconds:300}")
+    private long courseDetailTtlSeconds;
+
+    public CourseServiceImpl(RedisCacheService redisCacheService) {
+        this.redisCacheService = redisCacheService;
+    }
+
     @Override
     public List<Course> getAllCourses() {
-        return this.list();
+        String key = RedisKeys.courseList();
+        List<Course> cached = redisCacheService.get(key, new TypeReference<List<Course>>() {
+        });
+        if (cached != null) {
+            return cached;
+        }
+
+        List<Course> result = this.list();
+        redisCacheService.set(key, result, Duration.ofSeconds(courseListTtlSeconds));
+        return result;
     }
 
     @Override
     public Course getCourseById(Long id) {
+        String key = RedisKeys.courseDetail(id);
+        Course cached = redisCacheService.get(key, Course.class);
+        if (cached != null) {
+            return cached;
+        }
+
         Course course = this.getById(id);
         if (course == null) {
             throw new ResourceNotFoundException("Course not found with id: " + id);
         }
+
+        redisCacheService.set(key, course, Duration.ofSeconds(courseDetailTtlSeconds));
         return course;
     }
 
@@ -44,22 +78,16 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         course.setCreatedAt(LocalDateTime.now());
 
         this.save(course);
+        redisCacheService.delete(RedisKeys.courseList());
         return course;
     }
 
-    // (!!!)
-    // (!!!) 这里的逻辑已完全修正 (!!!)
-    // (!!!)
     @Override
     public Course updateCourse(Long id, CourseUpdateDto updateDto) {
-        // 1. 从数据库获取当前的完整数据
         Course course = this.getById(id);
         if (course == null) {
             throw new ResourceNotFoundException("Course not found with id: " + id);
         }
-
-        // 2. 检查 DTO 中的每个字段，如果不为 null，才更新
-        //    (如果用户发送了 "" 空字符串，也会被更新，这是正确的)
 
         if (updateDto.getName() != null) {
             course.setName(updateDto.getName());
@@ -83,9 +111,9 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
             course.setTeachingPlan(updateDto.getTeachingPlan());
         }
 
-        // 3. 保存被部分修改后的对象
-        // 'updated_at' 字段由数据库自动更新
         this.updateById(course);
+        redisCacheService.delete(RedisKeys.courseList());
+        redisCacheService.delete(RedisKeys.courseDetail(id));
         return course;
     }
 
@@ -95,6 +123,9 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         if (course == null) {
             throw new ResourceNotFoundException("Course not found with id: " + id);
         }
+
         this.removeById(id);
+        redisCacheService.delete(RedisKeys.courseList());
+        redisCacheService.delete(RedisKeys.courseDetail(id));
     }
 }
