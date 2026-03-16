@@ -29,9 +29,9 @@ spring:
 
 
 neo4j:
-  uri: bolt://8.152.220.164:7687
+  uri: bolt://127.0.0.1:7687
   username: neo4j
-  password: WLKCxm159357
+  password: 12345678
 
 
 graph:
