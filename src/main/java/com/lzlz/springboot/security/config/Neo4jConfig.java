@@ -7,12 +7,9 @@ import org.neo4j.driver.GraphDatabase;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-// ... imports
-
 @Configuration
 public class Neo4jConfig {
 
-    // 必须是 @Value("${neo4j.uri}")，注意花括号和$符号
     @Value("${neo4j.uri}")
     private String uri;
 
@@ -24,9 +21,26 @@ public class Neo4jConfig {
 
     @Bean
     public Driver neo4jDriver() {
+        System.out.println("===== Neo4j Config Check =====");
+        System.out.println("neo4j.uri = " + uri);
+        System.out.println("neo4j.username = " + username);
+        System.out.println("neo4j.password.length = " + (password == null ? 0 : password.length()));
+        System.out.println("==============================");
+
         if (uri == null || username == null || password == null) {
-            throw new IllegalStateException("在 application.properties 中找不到 neo4j 的 uri 或 username 或 password 配置！");
+            throw new IllegalStateException("在 application.yaml 中找不到 neo4j 的 uri 或 username 或 password 配置！");
         }
-        return GraphDatabase.driver(uri, AuthTokens.basic(username, password));
+
+        Driver driver = GraphDatabase.driver(uri, AuthTokens.basic(username, password));
+
+        try {
+            driver.verifyConnectivity();
+            System.out.println("Neo4j connectivity verified successfully.");
+        } catch (Exception e) {
+            System.err.println("Neo4j connectivity verification failed: " + e.getMessage());
+            throw e;
+        }
+
+        return driver;
     }
 }

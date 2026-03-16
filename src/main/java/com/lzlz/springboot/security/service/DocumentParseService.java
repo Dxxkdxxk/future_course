@@ -1,6 +1,6 @@
 package com.lzlz.springboot.security.service;
 
-
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 import com.lzlz.springboot.security.domain.ParseCallbackHandler;
 import com.lzlz.springboot.security.entity.Chapter;
 import com.lzlz.springboot.security.entity.Textbook;
@@ -160,6 +160,9 @@ public class DocumentParseService {
             // 2. 下载MinIO文件到本地临时目录（解析需要文件流）
             File tempFile = downloadMinIOFile(textbook.getMinioBucket(), textbook.getMinioObjectName());
 
+            if (tempFile != null)
+                log.info("临时文件路径:{}", tempFile.getAbsolutePath());
+                
             // 3. 根据文件类型解析章节
             List<Chapter> chapters = new ArrayList<>();
             if ("WORD".equals(textbook.getFileType())) {
@@ -209,70 +212,85 @@ public class DocumentParseService {
     /**
      * 解析Word文档章节（支持章、节、小节三级，字号过滤）
      */
-    public List<Chapter> parseWordChapters(File wordFile, Long textbookId) throws Exception {
-        List<Chapter> chapters = new ArrayList<>();
-        try (XWPFDocument document = new XWPFDocument(new FileInputStream(wordFile))) {
-            List<XWPFParagraph> paragraphs = document.getParagraphs();
+public List<Chapter> parseWordChapters(File wordFile, Long textbookId) throws Exception {
+    List<Chapter> chapters = new ArrayList<>();
+    try (XWPFDocument document = new XWPFDocument(new FileInputStream(wordFile))) {
+        List<XWPFParagraph> paragraphs = document.getParagraphs();
+        log.info("textbookId={}, 段落总数={}", textbookId, paragraphs.size());
 
-            Chapter currentChapter = null;  // 当前一级章节（章）
-            Chapter currentSection = null;  // 当前二级章节（节）
-            int chapterSort = 1;            // 章排序号
-            int sectionSort = 1;            // 节排序号
-            int subSectionSort = 1;         // 小节排序号
+        Chapter currentChapter = null;
+        Chapter currentSection = null;
+        int chapterSort = 1;
+        int sectionSort = 1;
+        int subSectionSort = 1;
 
-            for (XWPFParagraph paragraph : paragraphs) {
-                String text = paragraph.getText().trim();
-                // 跳过空文本
-                if (text.isEmpty()) {
-                    continue;
-                }
+        for (int i = 0; i < paragraphs.size(); i++) {
+            XWPFParagraph paragraph = paragraphs.get(i);
+            String rawText = paragraph.getText();
+            String text = rawText == null ? "" : rawText.trim();
 
-                // 步骤1：过滤非标题文本（通过字号）
-                if (!isTitleParagraph(paragraph)) {
-                    continue;
-                }
+            String style = paragraph.getStyle();
 
-                text = text.replaceAll("\\s+", "");
-                // 步骤2：识别标题层级（样式优先，正则兜底）
-                String style = paragraph.getStyle();
-                if ("Heading 1".equals(style) || LEVEL1_PATTERN.matcher(text).matches()) {
-                    // 一级标题（章）
-                    Chapter chapter = createChapter(textbookId, null, 1, text, chapterSort++);
-                    chapters.add(chapter);
-                    // 更新层级关联
-                    currentChapter = chapter;
-                    currentSection = null; // 重置当前节
-                    sectionSort = 1;
-                    subSectionSort = 1;
-                } else if ("Heading 2".equals(style) || LEVEL2_PATTERN.matcher(text).matches()) {
-                    // 二级标题（节）- 需关联到章
-                    if (currentChapter == null) {
-                        log.warn("解析到二级标题但无关联的一级章标题，文本：{}", text);
-                        continue;
-                    }
-                    Chapter section = createChapter(textbookId, currentChapter.getId(), 2, text, sectionSort++);
-                    chapters.add(section);
-                    // 更新层级关联
-                    currentSection = section;
-                    subSectionSort = 1; // 重置小节排序
-                } else if ("Heading 3".equals(style) || LEVEL3_PATTERN.matcher(text).matches()) {
-                    // 三级标题（小节）- 需关联到节
-                    if (currentSection == null) {
-                        log.warn("解析到三级标题但无关联的二级节标题，文本：{}", text);
-                        continue;
-                    }
-                    Chapter subSection = createChapter(textbookId, currentSection.getId(), 3, text, subSectionSort++);
-                    chapters.add(subSection);
-                }
+            Integer fontSize = null;
+            if (paragraph.getRuns() != null && !paragraph.getRuns().isEmpty()) {
+                XWPFRun run = paragraph.getRuns().get(0);
+                fontSize = run.getFontSize();
             }
-        } catch (Exception e) {
-            log.error("解析Word章节失败，textbookId={}", textbookId, e);
-            throw e;
-        }
 
-        log.info("Word文档解析完成：textbookId={}，解析出章节总数={}", textbookId, chapters.size());
-        return chapters;
+            log.info("段落[{}]: text='{}', style='{}', fontSize={}", i, text, style, fontSize);
+
+            if (text.isEmpty()) {
+                continue;
+            }
+
+            boolean titleParagraph = isTitleParagraph(paragraph);
+            log.info("段落[{}] 是否标题: {}", i, titleParagraph);
+            if (!titleParagraph) {
+                continue;
+            }
+
+            text = text.replaceAll("\\s+", "");
+            log.info("段落[{}] 清洗后 text='{}'", i, text);
+
+            boolean level1 = LEVEL1_PATTERN.matcher(text).matches();
+            boolean level2 = LEVEL2_PATTERN.matcher(text).matches();
+            boolean level3 = LEVEL3_PATTERN.matcher(text).matches();
+
+            log.info("段落[{}] 正则匹配: level1={}, level2={}, level3={}", i, level1, level2, level3);
+
+            if ("Heading 1".equals(style) || level1) {
+                Chapter chapter = createChapter(textbookId, null, 1, text, chapterSort++);
+                chapters.add(chapter);
+                currentChapter = chapter;
+                currentSection = null;
+                sectionSort = 1;
+                subSectionSort = 1;
+            } else if ("Heading 2".equals(style) || level2) {
+                if (currentChapter == null) {
+                    log.warn("解析到二级标题但无关联一级标题，文本：{}", text);
+                    continue;
+                }
+                Chapter section = createChapter(textbookId, currentChapter.getId(), 2, text, sectionSort++);
+                chapters.add(section);
+                currentSection = section;
+                subSectionSort = 1;
+            } else if ("Heading 3".equals(style) || level3) {
+                if (currentSection == null) {
+                    log.warn("解析到三级标题但无关联二级标题，文本：{}", text);
+                    continue;
+                }
+                Chapter subSection = createChapter(textbookId, currentSection.getId(), 3, text, subSectionSort++);
+                chapters.add(subSection);
+            }
+        }
+    } catch (Exception e) {
+        log.error("解析Word章节失败，textbookId={}", textbookId, e);
+        throw e;
     }
+
+    log.info("Word文档解析完成：textbookId={}，解析出章节总数={}", textbookId, chapters.size());
+    return chapters;
+}
 
     /**
      * 构建章节对象
@@ -291,26 +309,67 @@ public class DocumentParseService {
     /**
      * 判断段落是否为标题（通过字号阈值）
      */
-    private boolean isTitleParagraph(XWPFParagraph paragraph) {
-//        try {
-//            // 获取段落字号（优先从段落样式获取，无则从第一个文本段获取）
-//            CTPPr ctppr = paragraph.getCTP().getPPr();
-//            if (ctppr != null && ctppr.getRPr() != null && ctppr.getRPr().getSz() != null) {
-//                return ctppr.getRPr().getSz().getVal().intValue() >= TITLE_FONT_SIZE_THRESHOLD;
-//            }
-//            // 从文本段获取字号
-//            if (!paragraph.getRuns().isEmpty()) {
-//                CTRPr ctrpr = paragraph.getRuns().get(0).getCTR().getRPr();
-//                if (ctrpr != null && ctrpr.getSz() != null) {
-//                    return ctrpr.getSz().getVal().intValue() >= TITLE_FONT_SIZE_THRESHOLD;
-//                }
-//            }
-//        } catch (Exception e) {
-//            log.debug("获取段落字号失败，默认判定为非标题", e);
-//        }
-//        // 无法获取字号时，默认返回false（避免误判）
+ private boolean isTitleParagraph(XWPFParagraph paragraph) {
+    String text = paragraph.getText().trim();
+    if (text.isEmpty()) {
         return false;
     }
+
+    // 清理空格，方便正则匹配
+    String cleanText = text.replaceAll("\\s+", "");
+
+    // ==========================================
+    // 维度 1：强特征匹配（最高优先级）
+    // 如果文本以 "第X章"、"1."、"1.1"、"1.1.1" 开头，直接认定为标题，绕过字号检查！
+    // ==========================================
+    String titleRegex = "^(第[一二三四五六七八九十百]+[章|节]|\\d+\\.\\d+\\.\\d+|\\d+\\.\\d+|\\d+\\.).*";
+    if (cleanText.matches(titleRegex)) {
+        log.info("【正则命中】识别为标题: {}", text);
+        return true;
+    }
+
+    // ==========================================
+    // 维度 2：Word 底层大纲级别检查
+    // 即使用户没有设置样式，有时 Word 也会自动关联大纲级别 (Outline Level)
+    // ==========================================
+    if (paragraph.getCTP() != null && paragraph.getCTP().getPPr() != null) {
+        if (paragraph.getCTP().getPPr().getOutlineLvl() != null) {
+            log.info("【大纲级别命中】识别为标题: {}", text);
+            return true;
+        }
+    }
+
+    // ==========================================
+    // 维度 3：安全的字号与加粗检查 (兜底逻辑)
+    // ==========================================
+    double maxFontSize = -1;
+    boolean isBold = false;
+    
+    for (XWPFRun run : paragraph.getRuns()) {
+        // 安全获取字号，避免 NPE
+        Double fontSize = run.getFontSizeAsDouble();
+        if (fontSize != null && fontSize > maxFontSize) {
+            maxFontSize = fontSize;
+        }
+        if (run.isBold()) {
+            isBold = true;
+        }
+    }
+
+    // 假设：字号大于 14pt (约四号字) 或者 (字号未明确提取到但整段加粗且长度较短) 认为是标题
+    if (maxFontSize >= 14.0) {
+        log.info("【字号命中】字号为 {}, 识别为标题: {}", maxFontSize, text);
+        return true;
+    }
+    
+    // 如果连字号都拿不到(-1)，但文本很短（比如小于30个字）且被加粗了，也大概率是标题
+    if (maxFontSize == -1 && isBold && text.length() < 30) {
+        log.info("【短文本加粗命中】识别为标题: {}", text);
+        return true;
+    }
+
+    return false;
+}
     private List<Chapter> parsePdfChapters(File pdfFile, Long textbookId) throws Exception {
         final List<Chapter> chapters = new ArrayList<>();
         log.info("进入方法parsePdfChapters，文件路径：{}，文件大小：{}KB",

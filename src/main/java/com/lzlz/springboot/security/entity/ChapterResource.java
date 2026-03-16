@@ -5,7 +5,7 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("chapter_resources_ref")
+@TableName("chapter_resource_ref")
 public class ChapterResource {
     @TableId(type = IdType.AUTO)
     private Long id; // 这是数据库的主键 (1, 2, 3...)
