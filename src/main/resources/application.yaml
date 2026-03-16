@@ -11,9 +11,9 @@ spring:
     allow-circular-references: true
 
   datasource:
-    url: jdbc:mysql://8.152.220.164:3306/future_cource?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root
-    password: Root@12345678
+    url: jdbc:mysql://172.19.222.29:3306/future_cource?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: appuser
+    password: App@123456Strong!
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   servlet:
@@ -29,9 +29,9 @@ spring:
 
   data:
     redis:
-      host: ${REDIS_HOST:127.0.0.1}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
+      host: 172.19.222.29
+      port: 6379
+      password: WLKCxm159357
       database: ${REDIS_DB:0}
       timeout: 3000ms
       lettuce:
@@ -43,9 +43,9 @@ spring:
 
 
 neo4j:
-  uri: bolt://127.0.0.1:7687
+  uri: bolt://172.19.222.29:7687
   username: neo4j
-  password: 12345678
+  password: WLKCxm159357
 
 
 graph:
@@ -59,7 +59,7 @@ graph:
 
 # MinIO配置 (新增)
 minio:
-  endpoint: http://8.152.220.164:9000  # MinIO服务地址
+  endpoint: http://172.19.222.29:9000  # MinIO服务地址
   access-key: 9eBv4Rt6                 # 访问密钥
   secret-key: 3a7W5Mz8                 # 秘密密钥
   bucket: homework-bucket              # 存储作业的桶
