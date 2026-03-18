@@ -1,14 +1,17 @@
 package com.lzlz.springboot.security.service;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.*;
 import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.scheduling.annotation.Async;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 
 @Service
 public class DeepSeekService {
@@ -20,6 +23,30 @@ public class DeepSeekService {
 
     private final String apiKey = "sk-29e6e19b34644fd3bd03acdb85c85ec3";
     private final String url = "https://api.deepseek.com/v1/chat/completions";
+
+    /**
+     * 异步版本：对齐项目其它长耗时任务（复用 AsyncConfig.taskExecutor）
+     */
+    @Async
+    public CompletableFuture<String> outlineDSAsync(MultipartFile file) {
+        return CompletableFuture.completedFuture(outlineDS(file));
+    }
+
+    /**
+     * 异步版本：对齐项目其它长耗时任务（复用 AsyncConfig.taskExecutor）
+     */
+    @Async
+    public CompletableFuture<String> richMediaDSAsync(String query) {
+        return CompletableFuture.completedFuture(richMediaDS(query));
+    }
+
+    /**
+     * 异步版本：对齐项目其它长耗时任务（复用 AsyncConfig.taskExecutor）
+     */
+    @Async
+    public CompletableFuture<String> DSMarkHomeworkAsync(MultipartFile file, String courseId) {
+        return CompletableFuture.completedFuture(DSMarkHomework(file, courseId));
+    }
 
 
     // 教材大纲
