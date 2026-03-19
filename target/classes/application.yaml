@@ -11,9 +11,9 @@ spring:
     allow-circular-references: true
 
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/platform_db_merge_test?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-    username: root
-    password: 12345678
+    url: jdbc:mysql://172.19.222.29:3306/future_cource?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    username: appuser
+    password: App@123456Strong!
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   servlet:
@@ -29,7 +29,7 @@ spring:
 
   data:
     redis:
-      host: 127.0.0.1
+      host: 172.19.222.29
       port: 6379
       password: WLKCxm159357
       database: ${REDIS_DB:0}
@@ -43,9 +43,9 @@ spring:
 
 
 neo4j:
-  uri: bolt://127.0.0.1:7687
+  uri: bolt://172.19.222.29:7687
   username: neo4j
-  password: 12345678
+  password: WLKCxm159357
 
 
 graph:
