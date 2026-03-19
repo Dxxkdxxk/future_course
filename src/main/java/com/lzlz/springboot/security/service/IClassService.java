@@ -7,10 +7,10 @@ import java.util.List;
 
 public interface IClassService {
     // 创建班级
-    CourseClass createClass(Long courseId, String name);
+    CourseClass createClass(String name);
 
     // 获取某课程下的所有班级
-    List<CourseClass> getClassesByCourse(Long courseId);
+    List<CourseClass> getAllClasses();
 
     // 批量添加学生到班级
     void addStudentsToClass(Long classId, List<Integer> userIds);

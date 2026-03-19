@@ -9,6 +9,7 @@ import com.lzlz.springboot.security.mapper.UserMapper;
 
 import com.lzlz.springboot.security.service.HomeworkSubmissionService;
 import com.lzlz.springboot.security.service.MinIOService;
+import com.lzlz.springboot.security.service.StudentCourseAccessService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,9 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
 
     @Autowired
     private UserMapper userMapper;
+
+    @Autowired
+    private StudentCourseAccessService studentCourseAccessService;
 
 
     /**
@@ -91,6 +95,7 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void submitHomework(Long courseId,Long homeworkId, int studentId, MultipartFile[] files, String content) {
+        studentCourseAccessService.checkHomeworkAccess(studentId, courseId, homeworkId);
         validateRelation(courseId, homeworkId, null);
         StringBuilder objectNames = new StringBuilder();
         System.out.println(files.length);

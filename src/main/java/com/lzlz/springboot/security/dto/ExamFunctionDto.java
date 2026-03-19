@@ -12,7 +12,7 @@ public class ExamFunctionDto {
      */
     @Data
     public static class PublishRequest {
-        private Long classId;             // 发给哪个班
+        private Long courseId;
         private String title;             // 测试标题
         private List<String> questionIds; // 勾选的题目ID列表
         private LocalDateTime startTime;  // 开始时间

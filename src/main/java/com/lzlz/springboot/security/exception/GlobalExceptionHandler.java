@@ -41,7 +41,8 @@ public class GlobalExceptionHandler {
 
         // 自定义异常通常返回 400 (Bad Request) 或 500 (Server Error)
         // 假设你的 30xxx 错误码是客户端输入错误，用 400
-        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+        HttpStatus status = e.getCode() == 403 ? HttpStatus.FORBIDDEN : HttpStatus.BAD_REQUEST;
+        return new ResponseEntity<>(errorResponse, status);
     }
 
     /**

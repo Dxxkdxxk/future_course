@@ -11,7 +11,7 @@ spring:
     allow-circular-references: true
 
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/platform_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://127.0.0.1:3306/platform_db_merge_test?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: root
     password: 12345678
     driver-class-name: com.mysql.cj.jdbc.Driver

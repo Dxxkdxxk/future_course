@@ -19,6 +19,7 @@ import com.lzlz.springboot.security.mapper.QuestionMapper;
 import com.lzlz.springboot.security.service.HomeworkService;
 import com.lzlz.springboot.security.service.MinIOService;
 import com.lzlz.springboot.security.service.RedisCacheService;
+import com.lzlz.springboot.security.service.StudentCourseAccessService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,6 +53,9 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     @Autowired
     private RedisCacheService redisCacheService;
+
+    @Autowired
+    private StudentCourseAccessService studentCourseAccessService;
 
     @Value("${cache.ttl.homework-list-seconds:300}")
     private long homeworkListTtlSeconds;
@@ -129,6 +133,7 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     @Override
     public List<StudentHomeworkDetailDto> getHomeworkListForStudent(Long courseId, Long studentId) {
+        studentCourseAccessService.checkCourseAccess(studentId.intValue(), courseId);
         QueryWrapper<Homework> homeworkWrapper = new QueryWrapper<>();
         homeworkWrapper.eq("course_id", courseId);
         homeworkWrapper.orderByDesc("created_at");
@@ -218,6 +223,7 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     @Override
     public StudentHomeworkDetailDto getHomeworkDetailForStudent(Long courseId, Long homeworkId, Long studentId) {
+        studentCourseAccessService.checkHomeworkAccess(studentId.intValue(), courseId, homeworkId);
         validateRelation(courseId, homeworkId, null);
         Homework homework = homeworkMapper.selectById(homeworkId);
         if (homework == null) {

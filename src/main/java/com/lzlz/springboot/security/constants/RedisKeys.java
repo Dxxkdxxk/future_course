@@ -20,8 +20,8 @@ public final class RedisKeys {
         return "homework:detail:teacher:" + courseId + ":" + homeworkId;
     }
 
-    public static String classList(Long courseId) {
-        return "class:list:course:" + courseId;
+    public static String classList() {
+        return "class:list";
     }
 
     public static String questionList(Long courseId, String querySignature) {

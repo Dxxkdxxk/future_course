@@ -2,13 +2,18 @@ package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.ExamFunctionDto;
-
+import com.lzlz.springboot.security.entity.Course;
 import com.lzlz.springboot.security.entity.User;
+import com.lzlz.springboot.security.service.CurrentUserResolver;
 import com.lzlz.springboot.security.service.ExamFunctionService;
+import com.lzlz.springboot.security.service.ICourseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
@@ -19,21 +24,26 @@ public class StudentCourseController {
     @Autowired
     private ExamFunctionService examFunctionService;
 
-    /**
-     * [修改] 根据课程ID查找我所在的班级
-     * GET /api/v1/student/course/{courseId}/class
-     * * 场景：学生点击"Java课程"卡片进入详情页时调用，
-     * 获取到的 classId 将用于后续查询考试列表。
-     */
+    @Autowired
+    private ICourseService courseService;
+
+    @Autowired
+    private CurrentUserResolver currentUserResolver;
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<Course>>> getMyCourses(@AuthenticationPrincipal User user) {
+        User currentUser = currentUserResolver.requireUser(user);
+        List<Course> courses = courseService.getCoursesByStudentId(currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.success(courses));
+    }
+
     @GetMapping("/{courseId}/class")
     public ResponseEntity<ApiResponse<ExamFunctionDto.MyClassInfo>> getMyClassByCourse(
             @PathVariable Long courseId,
             @AuthenticationPrincipal User user) {
-
-        // 注意：这里返回单个对象，因为正常情况下一个学生在一门课里只会在一个班级
+        User currentUser = currentUserResolver.requireUser(user);
         ExamFunctionDto.MyClassInfo info =
-                examFunctionService.getStudentClassByCourse(user.getId(), courseId);
-
-        return ResponseEntity.ok(new ApiResponse<>(200, "获取成功", info));
+                examFunctionService.getStudentClassByCourse(currentUser.getId(), courseId);
+        return ResponseEntity.ok(new ApiResponse<>(200, "success", info));
     }
 }

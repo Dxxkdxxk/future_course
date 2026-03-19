@@ -7,16 +7,14 @@ import com.lzlz.springboot.security.entity.Course;
 
 import java.util.List;
 
-/**
- * 课程服务的接口
- * 继承 IService 以便获得MP的批量操作支持
- */
 public interface ICourseService extends IService<Course> {
 
-    // (!!!) 新增的接口，对应 GET /api/v1/course
     List<Course> getAllCourses();
 
-    // (!!!) 以下接口来自您原有的 CourseService.java
+    List<Course> getCoursesByTeacherId(Integer teacherId);
+
+    List<Course> getCoursesByStudentId(Integer studentId);
+
     Course getCourseById(Long id);
 
     Course createCourse(CourseCreateDto createDto);

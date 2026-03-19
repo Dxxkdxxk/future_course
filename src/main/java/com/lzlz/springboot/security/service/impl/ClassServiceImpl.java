@@ -41,25 +41,24 @@ public class ClassServiceImpl implements IClassService {
     private long classListTtlSeconds;
 
     @Override
-    public CourseClass createClass(Long courseId, String name) {
+    public CourseClass createClass(String name) {
         QueryWrapper<CourseClass> query = new QueryWrapper<>();
-        query.eq("course_id", courseId).eq("name", name);
+        query.eq("name", name);
         if (classMapper.selectCount(query) > 0) {
-            throw new CustomGraphException(400, "该课程下班级名称已存在");
+            throw new CustomGraphException(400, "Class name already exists");
         }
 
         CourseClass cc = new CourseClass();
-        cc.setCourseId(courseId);
         cc.setName(name);
         classMapper.insert(cc);
 
-        redisCacheService.delete(RedisKeys.classList(courseId));
+        redisCacheService.delete(RedisKeys.classList());
         return cc;
     }
 
     @Override
-    public List<CourseClass> getClassesByCourse(Long courseId) {
-        String key = RedisKeys.classList(courseId);
+    public List<CourseClass> getAllClasses() {
+        String key = RedisKeys.classList();
         List<CourseClass> cached = redisCacheService.get(key, new TypeReference<List<CourseClass>>() {
         });
         if (cached != null) {
@@ -67,7 +66,7 @@ public class ClassServiceImpl implements IClassService {
         }
 
         QueryWrapper<CourseClass> query = new QueryWrapper<>();
-        query.eq("course_id", courseId).orderByDesc("created_at");
+        query.orderByDesc("created_at");
         List<CourseClass> result = classMapper.selectList(query);
         redisCacheService.set(key, result, Duration.ofSeconds(classListTtlSeconds));
         return result;

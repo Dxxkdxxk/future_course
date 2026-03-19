@@ -20,6 +20,14 @@ public class Course {
     @TableField("teacher_id") // 匹配 'teacher_id'
     private Long teacherId;
 
+    @TableField("class_id")
+    private Long classId;
+
+    @TableField("course_no")
+    private String courseNo;
+
+    private String term;
+
     private String background;
     private String position;
     private String goal;
