@@ -11,7 +11,7 @@ spring:
     allow-circular-references: true
 
   datasource:
-    url: jdbc:mysql://172.19.222.29:3306/future_course?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+    url: jdbc:mysql://172.19.222.29:3306/future_cource?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
     username: appuser
     password: App@123456Strong!
     driver-class-name: com.mysql.cj.jdbc.Driver
