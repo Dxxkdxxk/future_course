@@ -13,16 +13,27 @@ public class MinIOConfig {
     @Value("${minio.endpoint}")
     public String endpoint;
 
+    @Value("${minio.endpoint-bat}")
+    public String endpointBat;
+
     @Value("${minio.access-key}")
     private String accessKey;
 
     @Value("${minio.secret-key}")
     private String secretKey;
 
-    @Bean
-    public MinioClient minioClient() {
+    @Bean("publicMinioClient")
+    public MinioClient publicMinioClient() {
         return MinioClient.builder()
                 .endpoint(endpoint)
+                .credentials(accessKey, secretKey)
+                .build();
+    }
+
+    @Bean("innerMinioClient")
+    public MinioClient innerMinioClient() {
+        return MinioClient.builder()
+                .endpoint(endpointBat)
                 .credentials(accessKey, secretKey)
                 .build();
     }

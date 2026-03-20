@@ -60,6 +60,7 @@ graph:
 # MinIO配置 (新增)
 minio:
   endpoint: http://8.152.220.164:9000  # MinIO服务地址
+  endpoint-bat: http://172.19.222.29:9000 # MinIO实际服务地址
   access-key: 9eBv4Rt6                 # 访问密钥
   secret-key: 3a7W5Mz8                 # 秘密密钥
   bucket: homework-bucket              # 存储作业的桶
