@@ -1128,7 +1128,7 @@ public List<Chapter> parseWordChapters(File wordFile, Long textbookId) throws Ex
     private File downloadMinIOFile(String bucket, String objectName) throws Exception {
         File tempFile = new File(System.getProperty("java.io.tmpdir") + File.separator + objectName);
         // 下载MinIO文件到临时文件
-        minioClient.downloadObject(
+        innerMinioClient.downloadObject(
                 DownloadObjectArgs.builder()
                         .bucket(bucket)
                         .object(objectName)
