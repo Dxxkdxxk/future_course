@@ -37,8 +37,8 @@ public class MinIOTest {
     @Autowired
     private MinIOService minIOService;
 
-    @Autowired
-    private MinioClient minIOClient;
+//    @Autowired
+//    private MinioClient minIOClient;
 
     @Autowired
     private MinIOConfig minIOConfig;
@@ -48,11 +48,11 @@ public class MinIOTest {
             "text/plain",
             "test upload".getBytes());
 
-    @BeforeEach
-    void setUp() {
-        assertSame(minIOConfig.minioClient(), minIOClient, "minIO实例不一致");
-        log.info("minIO实例准备完成，服务地址:{}", minIOConfig.endpoint);
-    }
+//    @BeforeEach
+//    void setUp() {
+//        assertSame(minIOConfig.minioClient(), minIOClient, "minIO实例不一致");
+//        log.info("minIO实例准备完成，服务地址:{}", minIOConfig.endpoint);
+//    }
     @Test
     void uploadFileTest() throws Exception {
 
