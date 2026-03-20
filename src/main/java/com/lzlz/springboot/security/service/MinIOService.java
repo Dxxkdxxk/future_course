@@ -41,6 +41,7 @@ public class MinIOService {
             innerMinioClient.makeBucket(MakeBucketArgs.builder().bucket(minioBucket).build());
         }
         log.info("正在上传文件:{}", file.getOriginalFilename());
+        log.info(">>> uploadFile 使用 innerMinioClient 开始上传");
         String originalFilename = file.getOriginalFilename();
         String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
         String objectName = UUID.randomUUID() + suffix;
