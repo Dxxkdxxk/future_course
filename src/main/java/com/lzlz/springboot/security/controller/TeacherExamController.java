@@ -40,9 +40,9 @@ public class TeacherExamController {
      */
     @GetMapping("/tasks")
     public
-    ResponseEntity<ApiResponse<List<ExamFunctionDto.TaskSummary>>> getClassTasks(@RequestParam Long classId) {
+    ResponseEntity<ApiResponse<List<ExamFunctionDto.TaskSummary>>> getClassTasks(@RequestParam Long courseId) {
 
-        List<ExamFunctionDto.TaskSummary> list = examFunctionService.getTeacherTaskList(classId);
+        List<ExamFunctionDto.TaskSummary> list = examFunctionService.getTeacherTaskList(courseId);
         return ResponseEntity.ok(new ApiResponse<>(200, "获取成功", list));
     }
 

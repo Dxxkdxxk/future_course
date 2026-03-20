@@ -3,9 +3,13 @@ package com.lzlz.springboot.security.controller;
 import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.GraphBuildResponse;
 import com.lzlz.springboot.security.dto.GraphInfoResponse;
+import com.lzlz.springboot.security.entity.User;
+import com.lzlz.springboot.security.service.CurrentUserResolver;
 import com.lzlz.springboot.security.service.GraphBuildService;
+import com.lzlz.springboot.security.service.StudentCourseAccessService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -20,28 +24,29 @@ public class StudentGraphController {
     @Autowired
     private GraphBuildService graphBuildService;
 
-    /**
-     * 1. 获取课程下的所有图谱列表
-     * 路径: GET /api/v1/student/courses/{courseId}/graphs
-     */
+    @Autowired
+    private StudentCourseAccessService studentCourseAccessService;
+
+    @Autowired
+    private CurrentUserResolver currentUserResolver;
+
     @GetMapping
-    public ResponseEntity<ApiResponse<List<GraphInfoResponse>>> getGraphsForCourse(@PathVariable long courseId) {
-
-        // 复用 Service 逻辑
+    public ResponseEntity<ApiResponse<List<GraphInfoResponse>>> getGraphsForCourse(
+            @PathVariable long courseId,
+            @AuthenticationPrincipal User user) {
+        User currentUser = currentUserResolver.requireUser(user);
+        studentCourseAccessService.checkCourseAccess(currentUser.getId(), courseId);
         List<GraphInfoResponse> list = graphBuildService.getGraphsByCourse(courseId);
-
         return ResponseEntity.ok(ApiResponse.success(list));
     }
 
-    /**
-     * 2. 获取单个图谱详情 (之前已添加)
-     * 路径: GET /api/v1/student/courses/{courseId}/graphs/{graphId}
-     */
     @GetMapping("/{graphId}")
     public ResponseEntity<ApiResponse<GraphBuildResponse>> getGraphDetails(
             @PathVariable long courseId,
-            @PathVariable long graphId) {
-
+            @PathVariable long graphId,
+            @AuthenticationPrincipal User user) {
+        User currentUser = currentUserResolver.requireUser(user);
+        studentCourseAccessService.checkGraphAccess(currentUser.getId(), courseId, graphId);
         GraphBuildResponse response = graphBuildService.getGraphDetails(graphId);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

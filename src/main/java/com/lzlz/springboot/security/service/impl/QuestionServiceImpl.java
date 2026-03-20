@@ -2,23 +2,38 @@ package com.lzlz.springboot.security.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.lzlz.springboot.security.constants.RedisKeys;
 import com.lzlz.springboot.security.dto.QuestionDto;
 import com.lzlz.springboot.security.entity.Question;
 import com.lzlz.springboot.security.exception.CustomGraphException;
 import com.lzlz.springboot.security.mapper.QuestionMapper;
 import com.lzlz.springboot.security.service.QuestionService;
+import com.lzlz.springboot.security.service.RedisCacheService;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> implements QuestionService {
+    private final RedisCacheService redisCacheService;
+
+    @Value("${cache.ttl.question-list-seconds:300}")
+    private long questionListTtlSeconds;
+
+    public QuestionServiceImpl(RedisCacheService redisCacheService) {
+        this.redisCacheService = redisCacheService;
+    }
 
     @Override
     public String createQuestion(Long courseId, QuestionDto.CreateRequest request) {
@@ -36,6 +51,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         question.setAnalysis(request.getAnalysis());
 
         this.save(question);
+        redisCacheService.deleteByPrefix("question:list:course:" + courseId + ":q:");
         return question.getId();
     }
 
@@ -88,6 +104,7 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
                 this.saveBatch(questions);
             }
 
+            redisCacheService.deleteByPrefix("question:list:course:" + courseId + ":q:");
             return questions.size();
 
         } catch (Exception e) {
@@ -98,6 +115,14 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
 
     @Override
     public List<Question> getQuestions(Long courseId, QuestionDto.QueryRequest query) {
+        String signature = buildQuerySignature(query);
+        String key = RedisKeys.questionList(courseId, signature);
+        List<Question> cached = redisCacheService.get(key, new TypeReference<List<Question>>() {
+        });
+        if (cached != null) {
+            return cached;
+        }
+
         QueryWrapper<Question> wrapper = new QueryWrapper<>();
         wrapper.eq("course_id", courseId);
 
@@ -119,7 +144,21 @@ public class QuestionServiceImpl extends ServiceImpl<QuestionMapper, Question> i
         }
 
         wrapper.orderByDesc("created_at");
-        return this.list(wrapper);
+        List<Question> result = this.list(wrapper);
+        redisCacheService.set(key, result, Duration.ofSeconds(questionListTtlSeconds));
+        return result;
+    }
+
+    private String buildQuerySignature(QuestionDto.QueryRequest query) {
+        return encode(query.getType()) + "|"
+                + encode(query.getDifficulty()) + "|"
+                + encode(query.getKeyword()) + "|"
+                + encode(query.getQuestions());
+    }
+
+    private String encode(String value) {
+        String normalized = value == null ? "" : value.trim();
+        return URLEncoder.encode(normalized, StandardCharsets.UTF_8);
     }
 
     /**

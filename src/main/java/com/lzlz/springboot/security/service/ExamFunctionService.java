@@ -11,12 +11,12 @@ public interface ExamFunctionService {
     Long publishExam(ExamFunctionDto.PublishRequest request, Integer teacherId);
 
     // [新增] 获取任务列表
-    List<ExamFunctionDto.TaskSummary> getTeacherTaskList(Long classId);
+    List<ExamFunctionDto.TaskSummary> getTeacherTaskList(Long courseId);
 
     /**
      * [新增] 获取学生视角的任务列表
      */
-    List<ExamFunctionDto.StudentTaskView> getStudentTasks(Long classId, Integer studentId);
+    List<ExamFunctionDto.StudentTaskView> getStudentTasks(Long courseId, Integer studentId);
 
     ExamFunctionDto.PaperView getPaperContentByTask(Long taskId, Integer studentId);
 
