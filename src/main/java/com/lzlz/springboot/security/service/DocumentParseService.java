@@ -1140,5 +1140,6 @@ public List<Chapter> parseWordChapters(File wordFile, Long textbookId) throws Ex
 
     // 注入MinIO客户端（用于下载文件）
     @Autowired
-    private MinioClient minioClient;
+    @Qualifier("innerMinioClient")
+    private MinioClient innerMinioClient;
 }
