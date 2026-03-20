@@ -9,7 +9,6 @@ import com.lzlz.springboot.security.security.CustomUserDetailsService;
 import com.lzlz.springboot.security.service.*;
 import io.minio.BucketExistsArgs;
 import io.minio.GetObjectArgs;
-import io.minio.MinioClient;
 import io.minio.StatObjectArgs;
 import io.minio.errors.MinioException;
 import jakarta.annotation.Resource;
@@ -48,9 +47,6 @@ public class TextbookController {
 
     @Resource
     private JwtTokenProvider jwtTokenProvider;
-
-    @Resource
-    private MinioClient minioClient;   // MinIO客户端（和你现有代码一致）
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
