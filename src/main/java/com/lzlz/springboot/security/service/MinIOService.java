@@ -1,5 +1,6 @@
 package com.lzlz.springboot.security.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import io.minio.*;
 import io.minio.errors.*;
 import io.minio.http.Method;
