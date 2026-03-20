@@ -67,12 +67,13 @@ minio:
 
 dify:
   api:
-    url: http://localhost
-    homeworkkey: test
-    expkey: test
-    Databasekey: test
-    questiongenekey: test
-    chatkey: test
+    url: https://api.dify.ai/v1
+    homeworkkey: app-NtrVGVXmOaVZq4PkwY3p9WUQ
+    expkey: app-NtrVGVXmOaVZq4PkwY3p9WUQ
+    questiongenekey: app-X3SHHwb1or8lCbX9LOO9vD6k
+    chatkey: app-4I5IOmfhuWYok3YMpPmzUKrD
+    # richmediakey: app-jRN6m54W3Pn8b2zHwyjVoumm
+    Databasekey: dataset-vdLI5IiCOMJ4ZyUyuBv6i0F4
 
 cache:
   ttl:
