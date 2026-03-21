@@ -49,8 +49,6 @@ public class TextbookController {
     @Resource
     private JwtTokenProvider jwtTokenProvider;
 
-    @Resource
-    private MinioClient minioClient;   // MinIO客户端（和你现有代码一致）
 
     @Autowired
     private CustomUserDetailsService userDetailsService;

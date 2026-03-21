@@ -22,12 +22,7 @@ import java.util.UUID;
 @Slf4j
 public class MinIOService {
     @Autowired
-    @Qualifier("publicMinioClient")
-    private MinioClient publicMinioClient;
-
-    @Autowired
-    @Qualifier("innerMinioClient")
-    private MinioClient innerMinioClient;
+    private MinioClient minioClient;
 
     @Value("${minio.bucket}")
     private String minioBucket;
@@ -37,15 +32,15 @@ public class MinIOService {
      * 返回文件名
      */
     public String uploadFile(MultipartFile file) throws Exception {
-        if (!innerMinioClient.bucketExists(BucketExistsArgs.builder().bucket(minioBucket).build()))  {
-            innerMinioClient.makeBucket(MakeBucketArgs.builder().bucket(minioBucket).build());
+        if (!minioClient.bucketExists(BucketExistsArgs.builder().bucket(minioBucket).build()))  {
+            minioClient.makeBucket(MakeBucketArgs.builder().bucket(minioBucket).build());
         }
         log.info("正在上传文件:{}", file.getOriginalFilename());
         String originalFilename = file.getOriginalFilename();
         String suffix = originalFilename.substring(originalFilename.lastIndexOf("."));
         String objectName = UUID.randomUUID() + suffix;
 
-        innerMinioClient.putObject(PutObjectArgs.builder()
+        minioClient.putObject(PutObjectArgs.builder()
                         .bucket(minioBucket)
                         .stream(file.getInputStream(), file.getSize(), -1)
                         .object(objectName)
@@ -56,7 +51,7 @@ public class MinIOService {
     }
 
     public String getPresignedUrl(String objectName) throws Exception{
-        return publicMinioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
+        return minioClient.getPresignedObjectUrl(GetPresignedObjectUrlArgs.builder()
                         .bucket(minioBucket)
                         .method(Method.GET)
                         .object(objectName)
