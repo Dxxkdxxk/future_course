@@ -1,5 +1,6 @@
 package com.lzlz.springboot.security.service;
 
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import com.lzlz.springboot.security.domain.ParseCallbackHandler;
 import com.lzlz.springboot.security.entity.Chapter;
@@ -1128,7 +1129,7 @@ public List<Chapter> parseWordChapters(File wordFile, Long textbookId) throws Ex
     private File downloadMinIOFile(String bucket, String objectName) throws Exception {
         File tempFile = new File(System.getProperty("java.io.tmpdir") + File.separator + objectName);
         // 下载MinIO文件到临时文件
-        minioClient.downloadObject(
+        innerMinioClient.downloadObject(
                 DownloadObjectArgs.builder()
                         .bucket(bucket)
                         .object(objectName)
@@ -1140,5 +1141,6 @@ public List<Chapter> parseWordChapters(File wordFile, Long textbookId) throws Ex
 
     // 注入MinIO客户端（用于下载文件）
     @Autowired
-    private MinioClient minioClient;
+    @Qualifier("innerMinioClient")
+    private MinioClient innerMinioClient;
 }
