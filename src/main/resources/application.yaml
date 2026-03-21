@@ -59,7 +59,7 @@ graph:
 
 # MinIO配置 (新增)
 minio:
-  endpoint: http://8.152.220.164:9000  # MinIO服务地址
+  endpoint: http://8.152.202.189:9000  # MinIO服务地址
   access-key: 9eBv4Rt6                 # 访问密钥
   secret-key: 3a7W5Mz8                 # 秘密密钥
   bucket: homework-bucket              # 存储作业的桶
@@ -74,6 +74,7 @@ dify:
     chatkey: app-4I5IOmfhuWYok3YMpPmzUKrD
     # richmediakey: app-jRN6m54W3Pn8b2zHwyjVoumm
     Databasekey: dataset-vdLI5IiCOMJ4ZyUyuBv6i0F4
+
 cache:
   ttl:
     course-list-seconds: 300

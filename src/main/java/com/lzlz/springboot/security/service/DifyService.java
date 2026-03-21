@@ -1,15 +1,14 @@
 package com.lzlz.springboot.security.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.*;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import org.springframework.core.io.Resource;
 import java.io.IOException;
@@ -18,7 +17,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 
 @Service
 public class DifyService {
@@ -53,46 +51,6 @@ public class DifyService {
 
     // todo:目前先固定用户ID，后面可以看情况改
     private static final String USER_ID = "user-homework-system";
-
-    /**
-     * 异步版本：对齐项目其它长耗时任务（复用 AsyncConfig.taskExecutor）
-     */
-    @Async
-    public CompletableFuture<String> DifyMarkHomeworkAsync(MultipartFile file, String courseId) {
-        return CompletableFuture.completedFuture(DifyMarkHomework(file, courseId));
-    }
-
-    /**
-     * 异步版本：对齐项目其它长耗时任务（复用 AsyncConfig.taskExecutor）
-     */
-    @Async
-    public CompletableFuture<String> DifyMarkExpAsync(MultipartFile file, String courseId) {
-        return CompletableFuture.completedFuture(DifyMarkExp(file, courseId));
-    }
-
-    /**
-     * 异步版本：对齐项目其它长耗时任务（复用 AsyncConfig.taskExecutor）
-     */
-    @Async
-    public CompletableFuture<String> DifyQueGeneAsync(String query, String courseId) {
-        return CompletableFuture.completedFuture(DifyQueGene(query, courseId));
-    }
-
-    /**
-     * 异步版本：对齐项目其它长耗时任务（复用 AsyncConfig.taskExecutor）
-     */
-    @Async
-    public CompletableFuture<String> DifyDifficultAsync(String query, String courseId) {
-        return CompletableFuture.completedFuture(DifyDifficult(query, courseId));
-    }
-
-    /**
-     * 异步版本：对齐项目其它长耗时任务（复用 AsyncConfig.taskExecutor）
-     */
-    @Async
-    public CompletableFuture<String> sendFileToDatabaseAsync(MultipartFile file, String courseId) {
-        return CompletableFuture.completedFuture(sendFileToDatabase(file, courseId));
-    }
 
     /**
      * 智能体批改作业

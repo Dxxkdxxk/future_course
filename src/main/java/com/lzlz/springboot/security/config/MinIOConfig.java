@@ -13,13 +13,14 @@ public class MinIOConfig {
     @Value("${minio.endpoint}")
     public String endpoint;
 
+
     @Value("${minio.access-key}")
     private String accessKey;
 
     @Value("${minio.secret-key}")
     private String secretKey;
 
-    @Bean
+    @Bean("minioClient")
     public MinioClient minioClient() {
         return MinioClient.builder()
                 .endpoint(endpoint)
