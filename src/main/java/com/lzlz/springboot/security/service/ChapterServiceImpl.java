@@ -3,7 +3,10 @@ package com.lzlz.springboot.security.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.lzlz.springboot.security.entity.Chapter;
+import com.lzlz.springboot.security.entity.CourseTextbookRelation;
 import com.lzlz.springboot.security.mapper.ChapterMapper;
+import com.lzlz.springboot.security.mapper.CourseTextbookRelationMapper;
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -13,6 +16,9 @@ import java.util.stream.Collectors;
 
 @Service
 public class ChapterServiceImpl extends ServiceImpl<ChapterMapper, Chapter> implements ChapterService {
+
+    @Resource
+    private CourseTextbookRelationMapper courseTextbookRelationMapper;
 
     @Override
     public List<Chapter> getChapterTreeByTextbookId(Long textbookId) {
@@ -44,7 +50,21 @@ public class ChapterServiceImpl extends ServiceImpl<ChapterMapper, Chapter> impl
                 }
             }
         }
-
         return rootChapters;
+    }
+
+    public List<Chapter> getChapterTreeByCourseId(Long courseId) {
+        LambdaQueryWrapper<CourseTextbookRelation> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CourseTextbookRelation::getCourseId, courseId)
+                .last("LIMIT 1");
+
+        CourseTextbookRelation relation = courseTextbookRelationMapper.selectOne(wrapper);
+
+        if (relation == null) {
+            throw new RuntimeException("该课程尚未绑定教材");
+        }
+
+        Long textbookId = relation.getTextbookId();
+        return getChapterTreeByTextbookId(textbookId);
     }
 }

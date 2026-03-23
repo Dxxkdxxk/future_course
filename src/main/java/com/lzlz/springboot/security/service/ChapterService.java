@@ -13,4 +13,6 @@ public interface ChapterService extends IService<Chapter> {
      * @return 章节树形列表
      */
     List<Chapter> getChapterTreeByTextbookId(Long textbookId);
+
+    List<Chapter> getChapterTreeByCourseId(Long courseId);
 }

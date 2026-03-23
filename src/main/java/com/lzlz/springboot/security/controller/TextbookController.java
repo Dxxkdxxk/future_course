@@ -3,6 +3,7 @@ package com.lzlz.springboot.security.controller;
 import cn.hutool.core.io.resource.InputStreamResource;
 import com.lzlz.springboot.security.entity.*;
 import com.lzlz.springboot.security.jwt.JwtTokenProvider;
+import com.lzlz.springboot.security.mapper.CourseTextbookRelationMapper;
 import com.lzlz.springboot.security.mapper.TextbookMapper;
 import com.lzlz.springboot.security.response.TextbookApiResponse;
 import com.lzlz.springboot.security.security.CustomUserDetailsService;
@@ -43,12 +44,15 @@ public class TextbookController {
     private MinIOService minIOService;
     @Autowired
     private TextbookMapper textbookMapper;
+
+    @Autowired
+    private CourseTextbookRelationMapper courseTextbookRelationMapper;
+
     @Autowired
     private DocumentParseService documentParseService;
 
     @Resource
     private JwtTokenProvider jwtTokenProvider;
-
 
     @Autowired
     private CustomUserDetailsService userDetailsService;
@@ -86,7 +90,8 @@ public class TextbookController {
             HttpServletRequest request,
             @RequestParam("file") MultipartFile file,
             @RequestParam("name") String name,
-            @RequestParam("isTextbook") boolean isTextbook) {
+            @RequestParam("isTextbook") boolean isTextbook,
+            @RequestParam("courseId") Long courseId) {
 
         try {
             String token = jwtTokenProvider.resolveToken(request);
@@ -114,6 +119,11 @@ public class TextbookController {
             textbook.setUploaderId(Long.valueOf(user.getId()));
             textbook.setStatus(Textbook.STATUS_PENDING);
             textbookMapper.insert(textbook);
+
+            CourseTextbookRelation relation = new CourseTextbookRelation();
+            relation.setCourseId(courseId);
+            relation.setTextbookId(textbook.getId());
+            courseTextbookRelationMapper.insert(relation);
 
             log.info("传输了isTextbook的值，为{}", isTextbook);
             // 4. 异步触发文档分节（不阻塞当前请求）
@@ -164,12 +174,12 @@ public class TextbookController {
     }
     /**
      * 根据教材ID查询章节树形结构
-     * @param textbookId 教材ID
+     * @param courseId 教材ID
      * @return 章节树形列表响应
      */
-    @GetMapping("/{textbookId}/chapters")
-    public TextbookApiResponse<List<Chapter>> getChaptersByTextbookId(@PathVariable Long textbookId) {
-        List<Chapter> chapterTree = chapterService.getChapterTreeByTextbookId(textbookId);
+    @GetMapping("/{courseId}/chapters")
+    public TextbookApiResponse<List<Chapter>> getChaptersByCourseId(@PathVariable Long courseId) {
+        List<Chapter> chapterTree = chapterService.getChapterTreeByCourseId(courseId);
         return TextbookApiResponse.success(chapterTree);
     }
 
