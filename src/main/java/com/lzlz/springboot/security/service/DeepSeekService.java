@@ -208,10 +208,6 @@ public class DeepSeekService {
                 }
                 return sb.toString();
             }
-        } else if (filename.endsWith(".doc")) {
-            try (WordExtractor extractor = new WordExtractor(file.    getInputStream())) {
-                return extractor.getText();
-            }
         } else if (filename.endsWith(".txt")) {
             return new String(file.getBytes(), StandardCharsets.UTF_8);
         } else if (filename.endsWith(".pdf")) {
