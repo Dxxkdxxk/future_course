@@ -9,8 +9,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import org.apache.poi.xwpf.usermodel.*;   // docx
-import org.apache.poi.hwpf.HWPFDocument;   // doc
-import org.apache.poi.hwpf.extractor.WordExtractor;   // doc
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 
