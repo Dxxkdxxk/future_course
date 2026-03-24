@@ -177,13 +177,13 @@ public class TextbookController {
      * @param courseId 教材ID
      * @return 章节树形列表响应
      */
-    @GetMapping("/{courseId}/chapters")
+    @GetMapping("/{courseId}/by-course/chapters")
     public TextbookApiResponse<List<Chapter>> getChaptersByCourseId(@PathVariable Long courseId) {
         List<Chapter> chapterTree = chapterService.getChapterTreeByCourseId(courseId);
         return TextbookApiResponse.success(chapterTree);
     }
 
-    @GetMapping("/{textbookId}/chapters")
+    @GetMapping("/{textbookId}/by-textbook/chapters")
     public TextbookApiResponse<List<Chapter>> getChaptersByTextbookId(@PathVariable Long textbookId) {
         List<Chapter> chapterTree = chapterService.getChapterTreeByTextbookId(textbookId);
         return TextbookApiResponse.success(chapterTree);
