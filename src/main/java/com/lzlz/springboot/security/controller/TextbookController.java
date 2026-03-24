@@ -183,6 +183,11 @@ public class TextbookController {
         return TextbookApiResponse.success(chapterTree);
     }
 
+    @GetMapping("/{textbookId}/chapters")
+    public TextbookApiResponse<List<Chapter>> getChaptersByTextbookId(@PathVariable Long textbookId) {
+        List<Chapter> chapterTree = chapterService.getChapterTreeByTextbookId(textbookId);
+        return TextbookApiResponse.success(chapterTree);
+    }
     /**
      * 接口2：按课程ID统计资源
      * @param courseId 课程ID（路径参数）
