@@ -120,10 +120,12 @@ public class TextbookController {
             textbook.setStatus(Textbook.STATUS_PENDING);
             textbookMapper.insert(textbook);
 
-            CourseTextbookRelation relation = new CourseTextbookRelation();
-            relation.setCourseId(courseId);
-            relation.setTextbookId(textbook.getId());
-            courseTextbookRelationMapper.insert(relation);
+            if (courseId != null) {
+                CourseTextbookRelation relation = new CourseTextbookRelation();
+                relation.setCourseId(courseId);
+                relation.setTextbookId(textbook.getId());
+                courseTextbookRelationMapper.insert(relation);
+            }
 
             log.info("传输了isTextbook的值，为{}", isTextbook);
             // 4. 异步触发文档分节（不阻塞当前请求）
