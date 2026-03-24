@@ -56,6 +56,7 @@ public class ChapterServiceImpl extends ServiceImpl<ChapterMapper, Chapter> impl
     public List<Chapter> getChapterTreeByCourseId(Long courseId) {
         LambdaQueryWrapper<CourseTextbookRelation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseTextbookRelation::getCourseId, courseId)
+                .orderByDesc(CourseTextbookRelation::getCreatedAt)
                 .last("LIMIT 1");
 
         CourseTextbookRelation relation = courseTextbookRelationMapper.selectOne(wrapper);
