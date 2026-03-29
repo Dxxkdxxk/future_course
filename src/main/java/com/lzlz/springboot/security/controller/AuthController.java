@@ -1,10 +1,13 @@
 package com.lzlz.springboot.security.controller;
 
+import cn.hutool.http.server.HttpServerRequest;
 import com.lzlz.springboot.security.domain.AuthRequest;
 import com.lzlz.springboot.security.jwt.JwtTokenProvider;
 import com.lzlz.springboot.security.response.ApiResponse;
+import com.lzlz.springboot.security.response.ChangePasswordRequest;
 import com.lzlz.springboot.security.security.CustomUserDetailsService;
 import com.lzlz.springboot.security.entity.User;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -81,5 +85,48 @@ public class AuthController {
         );
 
         return new ApiResponse<>(0, "注册成功", responseData);
+    }
+
+    @PostMapping("/change-password")
+    public ApiResponse<Object> changePassword(
+            HttpServletRequest httpRequest,
+            @RequestBody ChangePasswordRequest request) {
+        String token = jwtTokenProvider.resolveToken(httpRequest);
+        String username = jwtTokenProvider.getUsername(token);
+        String oldPassword = request.getOldPassword();
+        String newPassword = request.getNewPassword();
+
+        // 1. 参数校验
+        if (username == null || username.trim().isEmpty()) {
+            return new ApiResponse<>(1, "用户名不能为空", null);
+        }
+        if (oldPassword == null || oldPassword.trim().isEmpty()) {
+            return new ApiResponse<>(1, "旧密码不能为空", null);
+        }
+        if (newPassword == null || newPassword.trim().isEmpty()) {
+            return new ApiResponse<>(1, "新密码不能为空", null);
+        }
+
+        // 2. 查询用户是否存在
+        UserDetails userDetails;
+        try {
+            userDetails = userDetailsService.loadUserByUsername(username);
+        } catch (Exception e) {
+            return new ApiResponse<>(1, "用户不存在", null);
+        }
+
+        if (userDetails == null) {
+            return new ApiResponse<>(1, "用户不存在", null);
+        }
+
+        // 3. 校验旧密码是否正确
+        if (!Objects.equals(userDetails.getPassword(), oldPassword)) {
+            return new ApiResponse<>(1, "旧密码错误", null);
+        }
+
+        // 4. 修改密码
+        userDetailsService.changePassword(username, newPassword);
+
+        return new ApiResponse<>(0, "密码修改成功", null);
     }
 }

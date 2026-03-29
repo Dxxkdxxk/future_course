@@ -8,8 +8,13 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import org.apache.poi.xwpf.usermodel.*;   // docx
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.io.IOException;
 
 @Service
 public class DeepSeekService {
@@ -26,7 +31,7 @@ public class DeepSeekService {
     // 教材大纲
     public String outlineDS(MultipartFile file) {
         try {
-            String fileContent = new String(file.getBytes(), StandardCharsets.UTF_8);
+            String fileContent = extractFileText(file);
 
             // 4. 设置请求头
             HttpHeaders headers = new HttpHeaders();
@@ -138,7 +143,7 @@ public class DeepSeekService {
         try {
             System.out.println("\n========== 开始DS批改作业 ==========");
 
-            String fileContent = new String(file.getBytes(), StandardCharsets.UTF_8);
+            String fileContent = extractFileText(file);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -176,6 +181,39 @@ public class DeepSeekService {
         } catch (Exception e) {
             e.printStackTrace();
             return "处理失败：" + e.getMessage();
+        }
+    }
+
+    private String extractFileText(MultipartFile file) throws IOException {
+        String filename = file.getOriginalFilename();
+        if (filename == null) throw new IllegalArgumentException("文件名为空");
+
+        if (filename.endsWith(".docx")) {
+            try (XWPFDocument doc = new XWPFDocument(file.getInputStream())) {
+                StringBuilder sb = new StringBuilder();
+                for (XWPFParagraph para : doc.getParagraphs()) {
+                    String text = para.getText();
+                    if (!text.isBlank()) sb.append(text).append("\n");
+                }
+                for (XWPFTable table : doc.getTables()) {
+                    for (XWPFTableRow row : table.getRows()) {
+                        for (XWPFTableCell cell : row.getTableCells()) {
+                            String text = cell.getText();
+                            if (!text.isBlank()) sb.append(text).append("\t");
+                        }
+                        sb.append("\n");
+                    }
+                }
+                return sb.toString();
+            }
+        } else if (filename.endsWith(".txt")) {
+            return new String(file.getBytes(), StandardCharsets.UTF_8);
+        } else if (filename.endsWith(".pdf")) {
+            try (PDDocument pdf = PDDocument.load(file.getInputStream())) {
+                return new PDFTextStripper().getText(pdf);
+            }
+        } else {
+            throw new IllegalArgumentException("不支持的文件类型: " + filename);
         }
     }
 }
