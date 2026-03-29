@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -50,6 +51,14 @@ public class CourseController {
     @PutMapping("/{courseId}")
     public ResponseEntity<ApiResponse<Course>> updateCourse(@PathVariable("courseId") Long id, @RequestBody CourseUpdateDto updateDto) {
         Course course = courseService.updateCourse(id, updateDto);
+        return ResponseEntity.ok(ApiResponse.success(course));
+    }
+
+    @PostMapping("/{courseId}/teaching-plan")
+    public ResponseEntity<ApiResponse<Course>> uploadTeachingPlan(
+            @PathVariable("courseId") Long id,
+            @RequestParam("file") MultipartFile file) {
+        Course course = courseService.uploadTeachingPlan(id, file);
         return ResponseEntity.ok(ApiResponse.success(course));
     }
 

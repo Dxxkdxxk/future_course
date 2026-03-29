@@ -11,12 +11,14 @@ public class CourseUpdateDto {
     private String term;
 
     // 2. 保留您原有的所有字段
-    private String background;
-    private String position;
+    private String courseIntro;
+    private String courseOutline;
     private String goal;
     private String feature;
-    private String knowledgeLogic;
-    private String teachingPlan;
+    private String courseTextbook;
+    private String teachingPlanObjectName;
+    private String teachingPlanName;
+    private String courseTeam;
 
     // (!!!) 3. 'description' 字段已被删除
 }

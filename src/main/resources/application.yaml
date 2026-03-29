@@ -83,3 +83,4 @@ cache:
     homework-detail-teacher-seconds: 300
     class-list-seconds: 300
     question-list-seconds: 300
+    graph-detail-seconds: 120

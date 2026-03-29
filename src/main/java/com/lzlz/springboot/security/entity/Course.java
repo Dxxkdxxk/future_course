@@ -9,15 +9,15 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("courses") // (!!!) 匹配您的数据库表名
+@TableName("courses")
 public class Course {
 
-    @TableId(value = "id", type = IdType.AUTO) // 匹配 'id' bigint AUTO_INCREMENT
+    @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
-    private String name; // 匹配 'name'
+    private String name;
 
-    @TableField("teacher_id") // 匹配 'teacher_id'
+    @TableField("teacher_id")
     private Long teacherId;
 
     @TableField("class_id")
@@ -28,16 +28,30 @@ public class Course {
 
     private String term;
 
-    private String background;
-    private String position;
+    @TableField("course_intro")
+    private String courseIntro;
+
+    @TableField("course_outline")
+    private String courseOutline;
+
     private String goal;
+
     private String feature;
 
-    @TableField("knowledge_logic") // 匹配 'knowledge_logic'
-    private String knowledgeLogic;
+    @TableField("course_textbook")
+    private String courseTextbook;
 
-    @TableField("teaching_plan") // 匹配 'teaching_plan'
-    private String teachingPlan;
+    @TableField("teaching_plan_object_name")
+    private String teachingPlanObjectName;
+
+    @TableField("teaching_plan_name")
+    private String teachingPlanName;
+
+    @TableField(exist = false)
+    private String teachingPlanUrl;
+
+    @TableField("course_team")
+    private String courseTeam;
 
     @TableField("created_at")
     private LocalDateTime createdAt;

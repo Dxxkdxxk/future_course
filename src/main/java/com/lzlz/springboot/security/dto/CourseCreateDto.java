@@ -9,10 +9,12 @@ public class CourseCreateDto {
     private Long classId;
     private String courseNo;
     private String term;
-    private String background;
-    private String position;
+    private String courseIntro;
+    private String courseOutline;
     private String goal;
     private String feature;
-    private String knowledgeLogic;
-    private String teachingPlan;
+    private String courseTextbook;
+    private String teachingPlanObjectName;
+    private String teachingPlanName;
+    private String courseTeam;
 }

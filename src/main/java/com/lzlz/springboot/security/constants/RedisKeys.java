@@ -27,4 +27,8 @@ public final class RedisKeys {
     public static String questionList(Long courseId, String querySignature) {
         return "question:list:course:" + courseId + ":q:" + querySignature;
     }
+
+    public static String graphDetail(Long graphId) {
+        return "graph:detail:" + graphId;
+    }
 }

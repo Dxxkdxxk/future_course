@@ -1,6 +1,7 @@
 package com.lzlz.springboot.security.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.lzlz.springboot.security.constants.RedisKeys;
 import com.lzlz.springboot.security.dto.*;
 import com.lzlz.springboot.security.entity.GraphMetadata;
 import com.lzlz.springboot.security.exception.CustomGraphException;
@@ -8,6 +9,7 @@ import com.lzlz.springboot.security.exception.ResourceNotFoundException;
 import com.lzlz.springboot.security.mapper.GraphMetadataMapper;
 import com.lzlz.springboot.security.repository.GraphRepository;
 import com.lzlz.springboot.security.service.GraphBuildService;
+import com.lzlz.springboot.security.service.RedisCacheService;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.InputStream;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -30,6 +33,9 @@ public class GraphBuildServiceImpl implements GraphBuildService {
     @Autowired
     private GraphRepository graphRepository;
 
+    @Autowired
+    private RedisCacheService redisCacheService;
+
     // (!!!) 这是 .xlsx 文件的正确 Content Type
     private static final String XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -40,6 +46,9 @@ public class GraphBuildServiceImpl implements GraphBuildService {
     // (!!!) 修改点：从配置文件读取，默认值为 2000
     @Value("${graph.limit.max-nodes:2000}")
     private int maxNodeCount;
+
+    @Value("${cache.ttl.graph-detail-seconds:120}")
+    private long graphDetailTtlSeconds;
 
 
     // 定义每一层对应的 Label (根据列索引 0-4)
@@ -166,6 +175,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
 
             long newGraphId = metadata.getGraphId();
             graphRepository.saveGraph(newGraphId, nodes, edges);
+            evictGraphDetailCache(newGraphId);
 
             return GraphBuildResponse.builder()
                     .graphId(newGraphId)
@@ -316,6 +326,11 @@ public class GraphBuildServiceImpl implements GraphBuildService {
     @Override
     public GraphBuildResponse getGraphDetails(long graphId)
     {
+        String cacheKey = RedisKeys.graphDetail(graphId);
+        GraphBuildResponse cached = redisCacheService.get(cacheKey, GraphBuildResponse.class);
+        if (cached != null) {
+            return cached;
+        }
 
         // 1. (!!!) 检查 MySQL 中是否存在该图谱
         // (使用 MyBatis-Plus 提供的 selectById)
@@ -347,7 +362,9 @@ public class GraphBuildServiceImpl implements GraphBuildService {
                         .build()).collect(Collectors.toList());
 
         // 4. 构建并返回最终的 DTO
-        return GraphBuildResponse.builder().graphId(graphId).nodes(nodes).edges(edges).build();
+        GraphBuildResponse response = GraphBuildResponse.builder().graphId(graphId).nodes(nodes).edges(edges).build();
+        redisCacheService.set(cacheKey, response, Duration.ofSeconds(graphDetailTtlSeconds));
+        return response;
     }
 
 
@@ -396,6 +413,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
                 .description((String) nodeData.get("description"))
                 .label((String) nodeData.get("label"))
                 .build();
+        evictGraphDetailCache(graphId);
 
         // 4. 返回新创建的节点 DTO
         return newNode;
@@ -410,6 +428,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         // 所有的业务逻辑 (查找, 查重, 更新) 都在 GraphRepository 的
         // updateNodeProperties 方法中，并由一个 Neo4j 事务保证
         graphRepository.updateNodeProperties(graphId, nodeId, request);
+        evictGraphDetailCache(graphId);
 
         // 2. (!!!) [重要]
         // 我们不需要检查 "ResourceNotFoundException" 或 "CustomGraphException".
@@ -441,6 +460,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         if (!deleted) {
             throw new ResourceNotFoundException("Node not found with id: " + nodeId);
         }
+        evictGraphDetailCache(graphId);
     }
 
 
@@ -469,12 +489,14 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         );
 
         // 4. 转换为 DTO
-        return GraphEdge.builder()
+        GraphEdge edge = GraphEdge.builder()
                 .edgeId((String) edgeData.get("edgeId"))
                 .sourceNodeId((String) edgeData.get("sourceNodeId"))
                 .targetNodeId((String) edgeData.get("targetNodeId"))
                 .relationType((String) edgeData.get("relationType"))
                 .build();
+        evictGraphDetailCache(graphId);
+        return edge;
     }
 
 
@@ -488,6 +510,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         if (!deleted) {
             throw new ResourceNotFoundException("Edge not found with id: " + edgeId);
         }
+        evictGraphDetailCache(graphId);
     }
 
 
@@ -512,11 +535,17 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         }
 
         // 3. 转换为 DTO 返回
-        return GraphEdge.builder()
+        GraphEdge edge = GraphEdge.builder()
                 .edgeId((String) result.get("edgeId"))
                 .sourceNodeId((String) result.get("sourceNodeId"))
                 .targetNodeId((String) result.get("targetNodeId"))
                 .relationType((String) result.get("relationType"))
                 .build();
+        evictGraphDetailCache(graphId);
+        return edge;
+    }
+
+    private void evictGraphDetailCache(long graphId) {
+        redisCacheService.delete(RedisKeys.graphDetail(graphId));
     }
 }

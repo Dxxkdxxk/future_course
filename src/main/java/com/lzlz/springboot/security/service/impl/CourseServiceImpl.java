@@ -13,9 +13,11 @@ import com.lzlz.springboot.security.mapper.ClassStudentMapper;
 import com.lzlz.springboot.security.mapper.CourseClassMapper;
 import com.lzlz.springboot.security.mapper.CourseMapper;
 import com.lzlz.springboot.security.service.ICourseService;
+import com.lzlz.springboot.security.service.MinIOService;
 import com.lzlz.springboot.security.service.RedisCacheService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -29,6 +31,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
     private final RedisCacheService redisCacheService;
     private final CourseClassMapper courseClassMapper;
     private final ClassStudentMapper classStudentMapper;
+    private final MinIOService minIOService;
 
     @Value("${cache.ttl.course-list-seconds:300}")
     private long courseListTtlSeconds;
@@ -38,10 +41,12 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
 
     public CourseServiceImpl(RedisCacheService redisCacheService,
                              CourseClassMapper courseClassMapper,
-                             ClassStudentMapper classStudentMapper) {
+                             ClassStudentMapper classStudentMapper,
+                             MinIOService minIOService) {
         this.redisCacheService = redisCacheService;
         this.courseClassMapper = courseClassMapper;
         this.classStudentMapper = classStudentMapper;
+        this.minIOService = minIOService;
     }
 
     @Override
@@ -92,6 +97,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         String key = RedisKeys.courseDetail(id);
         Course cached = redisCacheService.get(key, Course.class);
         if (cached != null) {
+            enrichTeachingPlanUrl(cached);
             return cached;
         }
 
@@ -101,6 +107,7 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         }
 
         redisCacheService.set(key, course, Duration.ofSeconds(courseDetailTtlSeconds));
+        enrichTeachingPlanUrl(course);
         return course;
     }
 
@@ -116,12 +123,14 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         course.setClassId(createDto.getClassId());
         course.setCourseNo(createDto.getCourseNo());
         course.setTerm(createDto.getTerm());
-        course.setBackground(createDto.getBackground());
-        course.setPosition(createDto.getPosition());
+        course.setCourseIntro(createDto.getCourseIntro());
+        course.setCourseOutline(createDto.getCourseOutline());
         course.setGoal(createDto.getGoal());
         course.setFeature(createDto.getFeature());
-        course.setKnowledgeLogic(createDto.getKnowledgeLogic());
-        course.setTeachingPlan(createDto.getTeachingPlan());
+        course.setCourseTextbook(createDto.getCourseTextbook());
+        course.setCourseTeam(createDto.getCourseTeam());
+        course.setTeachingPlanObjectName(createDto.getTeachingPlanObjectName());
+        course.setTeachingPlanName(createDto.getTeachingPlanName());
         course.setCreatedAt(LocalDateTime.now());
 
         this.save(course);
@@ -145,11 +154,11 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         if (updateDto.getTerm() != null) {
             course.setTerm(updateDto.getTerm());
         }
-        if (updateDto.getBackground() != null) {
-            course.setBackground(updateDto.getBackground());
+        if (updateDto.getCourseIntro() != null) {
+            course.setCourseIntro(updateDto.getCourseIntro());
         }
-        if (updateDto.getPosition() != null) {
-            course.setPosition(updateDto.getPosition());
+        if (updateDto.getCourseOutline() != null) {
+            course.setCourseOutline(updateDto.getCourseOutline());
         }
         if (updateDto.getGoal() != null) {
             course.setGoal(updateDto.getGoal());
@@ -157,17 +166,59 @@ public class CourseServiceImpl extends ServiceImpl<CourseMapper, Course> impleme
         if (updateDto.getFeature() != null) {
             course.setFeature(updateDto.getFeature());
         }
-        if (updateDto.getKnowledgeLogic() != null) {
-            course.setKnowledgeLogic(updateDto.getKnowledgeLogic());
+        if (updateDto.getCourseTextbook() != null) {
+            course.setCourseTextbook(updateDto.getCourseTextbook());
         }
-        if (updateDto.getTeachingPlan() != null) {
-            course.setTeachingPlan(updateDto.getTeachingPlan());
+        if (updateDto.getCourseTeam() != null) {
+            course.setCourseTeam(updateDto.getCourseTeam());
+        }
+        if (updateDto.getTeachingPlanObjectName() != null) {
+            course.setTeachingPlanObjectName(updateDto.getTeachingPlanObjectName());
+        }
+        if (updateDto.getTeachingPlanName() != null) {
+            course.setTeachingPlanName(updateDto.getTeachingPlanName());
         }
 
         this.updateById(course);
         redisCacheService.delete(RedisKeys.courseList());
         redisCacheService.delete(RedisKeys.courseDetail(id));
         return course;
+    }
+
+    @Override
+    public Course uploadTeachingPlan(Long id, MultipartFile file) {
+        Course course = this.getById(id);
+        if (course == null) {
+            throw new ResourceNotFoundException("Course not found with id: " + id);
+        }
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("teaching plan file is required");
+        }
+
+        try {
+            String objectName = minIOService.uploadFile(file);
+            course.setTeachingPlanObjectName(objectName);
+            course.setTeachingPlanName(file.getOriginalFilename());
+            this.updateById(course);
+
+            redisCacheService.delete(RedisKeys.courseList());
+            redisCacheService.delete(RedisKeys.courseDetail(id));
+            enrichTeachingPlanUrl(course);
+            return course;
+        } catch (Exception e) {
+            throw new RuntimeException("Teaching plan upload failed: " + e.getMessage(), e);
+        }
+    }
+
+    private void enrichTeachingPlanUrl(Course course) {
+        if (course == null || course.getTeachingPlanObjectName() == null || course.getTeachingPlanObjectName().isBlank()) {
+            return;
+        }
+        try {
+            course.setTeachingPlanUrl(minIOService.getPresignedUrl(course.getTeachingPlanObjectName()));
+        } catch (Exception e) {
+            course.setTeachingPlanUrl(null);
+        }
     }
 
     @Override
