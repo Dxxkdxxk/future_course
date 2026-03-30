@@ -27,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
 import javax.validation.Valid;
 import java.io.InputStream;
@@ -203,15 +204,41 @@ public class TextbookController {
     }
 
     @GetMapping("/{resourceId}/preview")
-    public Result<?> getUrl(@PathVariable Long resourceId) {
+    public Object preview(@PathVariable Long resourceId,
+                          @RequestParam(defaultValue = "url") String mode) {
         try {
             Textbook textbook = textbookMapper.selectById(resourceId);
-            return Result.success("教材临时链接获取成功", new HashMap<String, String>() {{
-                put("url", minIOService.getPresignedUrl(textbook.getMinioObjectName()));
-            }});
+            if (textbook == null) {
+                return Result.fail("教材不存在");
+            }
+
+            if ("stream".equalsIgnoreCase(mode)) {
+                InputStream inputStream = minIOService.getObjectStream(textbook.getMinioObjectName());
+
+                StreamingResponseBody body = outputStream -> {
+                    try (inputStream; outputStream) {
+                        byte[] buffer = new byte[8192];
+                        int len;
+                        while ((len = inputStream.read(buffer)) != -1) {
+                            outputStream.write(buffer, 0, len);
+                        }
+                        outputStream.flush();
+                    }
+                };
+
+                return ResponseEntity.ok()
+                        .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
+                        .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                        .body(body);
+            }
+
+            Map<String, String> data = new HashMap<>();
+            data.put("url", minIOService.getPresignedUrl(textbook.getMinioObjectName()));
+            return Result.success("教材临时链接获取成功", data);
+
         } catch (Exception e) {
-            log.error("获取临时链接失败", e);
-            return Result.fail("获取临时链接失败：" + e.getMessage());
+            log.error("预览失败", e);
+            return Result.fail("预览失败：" + e.getMessage());
         }
     }
 
