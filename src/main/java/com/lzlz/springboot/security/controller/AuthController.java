@@ -12,6 +12,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -31,7 +32,8 @@ public class AuthController {
     @Autowired
     private CustomUserDetailsService userDetailsService;
 
-
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @PostMapping("/login")
     public ApiResponse<Object> login(@RequestBody AuthRequest request) {
@@ -91,6 +93,7 @@ public class AuthController {
     public ApiResponse<Object> changePassword(
             HttpServletRequest httpRequest,
             @RequestBody ChangePasswordRequest request) {
+
         String token = jwtTokenProvider.resolveToken(httpRequest);
         String username = jwtTokenProvider.getUsername(token);
         String oldPassword = request.getOldPassword();
@@ -120,12 +123,13 @@ public class AuthController {
         }
 
         // 3. 校验旧密码是否正确
-        if (!Objects.equals(userDetails.getPassword(), oldPassword)) {
+        if (!passwordEncoder.matches(oldPassword, userDetails.getPassword())) {
             return new ApiResponse<>(1, "旧密码错误", null);
         }
 
-        // 4. 修改密码
-        userDetailsService.changePassword(username, newPassword);
+        // 4. 修改密码（新密码加密后保存）
+        String encodedNewPassword = passwordEncoder.encode(newPassword);
+        userDetailsService.changePassword(username, encodedNewPassword);
 
         return new ApiResponse<>(0, "密码修改成功", null);
     }
