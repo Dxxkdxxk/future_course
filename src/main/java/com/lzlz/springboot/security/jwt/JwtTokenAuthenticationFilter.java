@@ -38,10 +38,10 @@ public class JwtTokenAuthenticationFilter extends GenericFilterBean {
         HttpServletResponse response = (HttpServletResponse) res;
         String path = request.getRequestURI();
 
-        if (path.contains("/api/v1/auth/")) {
-            filterChain.doFilter(req, res);
-            return;
-        }
+//        if (path.contains("/api/v1/auth/")) {
+//            filterChain.doFilter(req, res);
+//            return;
+//        }
 
         try {
             String token = jwtTokenProvider.resolveToken(request);
