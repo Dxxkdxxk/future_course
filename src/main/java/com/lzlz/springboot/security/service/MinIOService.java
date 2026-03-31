@@ -58,4 +58,14 @@ public class MinIOService {
                         .expiry(3600)
                 .build());
     }
+
+        public byte[] getFileStream(String objectName) throws Exception {
+        try (InputStream inputStream = minioClient.getObject(GetObjectArgs.builder()
+                .bucket(minioBucket)
+                .object(objectName)
+                .build())) {
+
+            return inputStream.readAllBytes();  // Read the file into a byte array
+        }
+    }
 }
