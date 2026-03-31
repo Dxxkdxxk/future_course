@@ -67,10 +67,9 @@ public class CustomUserDetailsService implements UserDetailsService, UserDetails
 
     @Override
     public void changePassword(String username, String newPassword) {
-        String encodedPassword = passwordEncoder.encode(newPassword);
         UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
         updateWrapper.eq("username", username); // 条件：用户名
-        updateWrapper.set("password", encodedPassword); // 设置新的密码
+        updateWrapper.set("password", newPassword); // 设置新的密码
         userMapper.update(null, updateWrapper);
     }
 
