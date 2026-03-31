@@ -1,5 +1,6 @@
 package com.lzlz.springboot.security.security;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.mapper.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -65,8 +66,12 @@ public class CustomUserDetailsService implements UserDetailsService, UserDetails
     }
 
     @Override
-    public void changePassword(String oldPassword, String newPassword) {
-        // Implement password change logic if required
+    public void changePassword(String username, String newPassword) {
+        String encodedPassword = passwordEncoder.encode(newPassword);
+        UpdateWrapper<User> updateWrapper = new UpdateWrapper<>();
+        updateWrapper.eq("username", username); // 条件：用户名
+        updateWrapper.set("password", encodedPassword); // 设置新的密码
+        userMapper.update(null, updateWrapper);
     }
 
     @Override
