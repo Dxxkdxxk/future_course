@@ -13,6 +13,9 @@ public class ChapterResource {
     private Long courseId;
     private Long chapterId;
 
+    @TableField("learning_chapter_id")
+    private Long learningChapterId;
+
     @TableField("resource_name")
     private String resourceName;
 

@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
@@ -58,14 +57,5 @@ public class MinIOService {
                         .object(objectName)
                         .expiry(3600)
                 .build());
-    }
-
-    public InputStream getObjectStream(String objectName) throws Exception {
-        return minioClient.getObject(
-                GetObjectArgs.builder()
-                        .bucket(minioBucket)
-                        .object(objectName)
-                        .build()
-        );
     }
 }
