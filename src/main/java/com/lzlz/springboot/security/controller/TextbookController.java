@@ -68,6 +68,8 @@ public class TextbookController {
         SUFFIX_TYPE_MAP.put("pdf", "PDF");
         SUFFIX_TYPE_MAP.put("doc", "WORD");
         SUFFIX_TYPE_MAP.put("docx", "WORD");
+        SUFFIX_TYPE_MAP.put("ppt", "PPT");
+        SUFFIX_TYPE_MAP.put("pptx", "PPT");
         SUFFIX_TYPE_MAP.put("txt", "TXT");
         SUFFIX_TYPE_MAP.put("xls", "EXCEL");
         SUFFIX_TYPE_MAP.put("xlsx", "EXCEL");
