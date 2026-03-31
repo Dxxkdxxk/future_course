@@ -1,5 +1,6 @@
 package com.lzlz.springboot.security.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.CourseCreateDto;
 import com.lzlz.springboot.security.dto.CourseUpdateDto;
@@ -10,12 +11,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import jakarta.annotation.Resource;
+import com.lzlz.springboot.security.entity.CourseTextbookRelation;
+import com.lzlz.springboot.security.mapper.CourseTextbookRelationMapper;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/course")
 public class CourseController {
+
+    @Resource
+    private CourseTextbookRelationMapper courseTextbookRelationMapper;
 
     @Autowired
     private ICourseService courseService;
@@ -70,5 +77,22 @@ public class CourseController {
 
         // 使用这个版本，它会返回 200 OK 和 统一的JSON结构
         return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @GetMapping("/{courseId}/resource")
+    public ResponseEntity<ApiResponse<Long>> getChapterTreeByCourseId(Long courseId) {
+        LambdaQueryWrapper<CourseTextbookRelation> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(CourseTextbookRelation::getCourseId, courseId)
+                .orderByDesc(CourseTextbookRelation::getCreatedAt)
+                .last("LIMIT 1");
+
+        CourseTextbookRelation relation = courseTextbookRelationMapper.selectOne(wrapper);
+
+        if (relation == null) {
+            throw new RuntimeException("该课程尚未绑定教材");
+        }
+
+        Long textbookId = relation.getTextbookId();
+        return ResponseEntity.ok(ApiResponse.success(textbookId));
     }
 }
