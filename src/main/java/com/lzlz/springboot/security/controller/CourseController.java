@@ -79,7 +79,7 @@ public class CourseController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
-    @GetMapping("/{courseId}/resource")
+    @GetMapping("/{courseId}/textbook")
     public ResponseEntity<ApiResponse<Long>> getChapterTreeByCourseId(Long courseId) {
         LambdaQueryWrapper<CourseTextbookRelation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseTextbookRelation::getCourseId, courseId)
