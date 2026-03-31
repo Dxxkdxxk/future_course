@@ -210,7 +210,7 @@ public class TextbookController {
             Textbook textbook = textbookMapper.selectById(resourceId);
 
             // Check the fileType in Textbook
-            if ("PDF".equalsIgnoreCase(textbook.getFileType())) {
+            if ("PDF".equalsIgnoreCase(textbook.getFileType()) || "PPT".equalsIgnoreCase(textbook.getFileType())) {
                 // Get file stream for PDF or PPT
                 byte[] fileStream = minIOService.getFileStream(textbook.getMinioObjectName());
                 return Result.success("教材文件流获取成功", new HashMap<String, Object>() {{
