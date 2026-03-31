@@ -80,7 +80,7 @@ public class CourseController {
     }
 
     @GetMapping("/{courseId}/textbook")
-    public ResponseEntity<ApiResponse<Long>> getChapterTreeByCourseId(Long courseId) {
+    public ResponseEntity<ApiResponse<Long>> getChapterTreeByCourseId(@PathVariable Long courseId) {
         LambdaQueryWrapper<CourseTextbookRelation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseTextbookRelation::getCourseId, courseId)
                 .orderByDesc(CourseTextbookRelation::getCreatedAt)
