@@ -39,11 +39,14 @@ public class AuthController {
     public ApiResponse<Object> login(@RequestBody AuthRequest request) {
         String username = request.getUsername();
         UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-        if (userDetails == null){ // TODO: 修改返回格式
+        if (userDetails == null) { // 用户名不存在
             return new ApiResponse<>(1, "用户名不存在", null);
         }
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, request.getPassword()));
-
+    
+        // 校验密码是否正确
+        if (!passwordEncoder.matches(request.getPassword(), userDetails.getPassword())) {
+            return new ApiResponse<>(1, "用户名或密码错误", null);
+        }
 
         // Cast UserDetails to User to access additional fields
         User user = (User) userDetails;
