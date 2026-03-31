@@ -204,16 +204,28 @@ public class TextbookController {
         return resourceStatisticService.statisticByCourseId(courseId);
     }
 
-    @GetMapping("/{resourceId}/preview")
+        @GetMapping("/{resourceId}/preview")
     public Result<?> getUrl(@PathVariable Long resourceId) {
         try {
             Textbook textbook = textbookMapper.selectById(resourceId);
-            return Result.success("教材临时链接获取成功", new HashMap<String, String>() {{
-                put("url", minIOService.getPresignedUrl(textbook.getMinioObjectName()));
-            }});
+
+            // Check the fileType in Textbook
+            if ("PDF".equalsIgnoreCase(textbook.getFileType()) || "PPT".equalsIgnoreCase(textbook.getFileType())) {
+                // Get file stream for PDF or PPT
+                byte[] fileStream = minIOService.getFileStream(textbook.getMinioObjectName());
+                return Result.success("教材文件流获取成功", new HashMap<String, Object>() {{
+                    put("fileStream", fileStream);
+                }});
+            } else {
+                // Otherwise, return pre-signed URL
+                String url = minIOService.getPresignedUrl(textbook.getMinioObjectName());
+                return Result.success("教材临时链接获取成功", new HashMap<String, String>() {{
+                    put("url", url);
+                }});
+            }
         } catch (Exception e) {
-            log.error("获取临时链接失败", e);
-            return Result.fail("获取临时链接失败：" + e.getMessage());
+            log.error("获取文件失败", e);
+            return Result.fail("获取文件失败：" + e.getMessage());
         }
     }
 
