@@ -1,6 +1,5 @@
 package com.lzlz.springboot.security.entity;
 
-import com.alibaba.excel.annotation.ExcelProperty;
 import lombok.Data;
 
 @Data
