@@ -6,9 +6,6 @@ import lombok.Data;
 @Data
 public class StudentExcelDTO {
 
-    @ExcelProperty("序号")
-    private Integer index;
-
     @ExcelProperty("班级")
     private String className;
 
