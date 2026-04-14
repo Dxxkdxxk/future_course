@@ -13,7 +13,7 @@ public class StudentExcelDTO {
 
     private String password;
 
-    private Long userId;       // 注册成功后返回的ID (如果是String类型请自行修改)
+    private Integer userId;       // 注册成功后返回的ID (如果是String类型请自行修改)
     private boolean success;   // 标识该条记录是否注册成功
     private String message;    // 存储成功或失败的提示信息
 }
