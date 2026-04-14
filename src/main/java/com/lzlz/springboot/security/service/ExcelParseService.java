@@ -98,7 +98,7 @@ public class ExcelParseService {
             String password = dto.getPassword();
             
             // Excel中没有这两个字段，设定默认值（或者如果需要，你可以从Excel补充读取）
-            String role = "ROLE_USER"; 
+            String role = "student"; 
             String email = ""; 
 
             // 检查用户是否存在
