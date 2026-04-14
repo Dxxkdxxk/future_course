@@ -10,6 +10,15 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+import org.apache.poi.ss.usermodel.*;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+
 @Service
 public class ExcelParseService {
 
@@ -80,6 +89,37 @@ public class ExcelParseService {
             }
         }
 
+        for (StudentExcelDTO dto : dtoList) {
+            String username = dto.getUsername();
+            String password = dto.getPassword();
+            
+            // Excel中没有这两个字段，设定默认值（或者如果需要，你可以从Excel补充读取）
+            String role = "ROLE_USER"; 
+            String email = ""; 
+
+            // 检查用户是否存在
+            if (userDetailsService.userExists(username)) {
+                dto.setSuccess(false);
+                dto.setMessage("注册失败：用户名已存在");
+                continue; // 跳过当前用户，继续注册下一个
+            }
+
+            try {
+                // 创建新用户并保存
+                User newUser = new User(username, password, role, email);
+                userDetailsService.createUser(newUser);
+
+                // 注册成功，回填数据
+                dto.setUserId(newUser.getId()); // 假设 newUser 存在 getId() 方法
+                dto.setSuccess(true);
+                dto.setMessage("注册成功");
+            } catch (Exception e) {
+                // 捕获数据库约束或其他异常，防止阻断整个批量流程
+                dto.setSuccess(false);
+                dto.setMessage("注册失败：系统异常 (" + e.getMessage() + ")");
+            }
+        }
+        
         if (dtoList.isEmpty()) {
             throw new RuntimeException("未能从文件中解析出有效数据，请确保已填写数据且未使用空白模板。");
         }
