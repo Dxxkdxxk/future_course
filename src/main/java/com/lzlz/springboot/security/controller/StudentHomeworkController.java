@@ -35,7 +35,7 @@ public class StudentHomeworkController {
     public ApiResponse<Void> submitHomework(
             @PathVariable Long courseId,
             @PathVariable Long homeworkId,
-            @RequestParam("files") MultipartFile[] files,
+            @RequestParam(value = "files", required = false) MultipartFile[] files,
             @RequestParam(value = "content", required = false) String content,
             @AuthenticationPrincipal User user
     ) {

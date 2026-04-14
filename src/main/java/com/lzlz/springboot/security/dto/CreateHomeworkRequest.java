@@ -2,24 +2,29 @@ package com.lzlz.springboot.security.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
+import org.springframework.format.annotation.DateTimeFormat;
+
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 public class CreateHomeworkRequest {
     private String title;
+    private String content;
+
+    // Backward compatible field; if content is empty, service falls back to description.
     private String description;
 
-    // 接收前端的时间格式 "yyyy-MM-dd HH:mm:ss"
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime deadline;
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime startTime;
 
-    // 题目列表
-    private List<QuestionItem> questions;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime endTime;
 
-    @Data
-    public static class QuestionItem {
-        private String questionId;
-        private Integer score;
-    }
+    private Boolean allowLateSubmit;
+    private Integer totalScore;
+
+    // Comma-separated MinIO object names.
+    private String attachmentUrls;
 }
