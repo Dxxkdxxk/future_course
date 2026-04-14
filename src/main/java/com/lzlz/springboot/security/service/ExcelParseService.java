@@ -18,10 +18,14 @@ import org.apache.poi.ss.usermodel.*;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import com.lzlz.springboot.security.security.CustomUserDetailsService;
 
 @Service
 public class ExcelParseService {
 
+    @Autowired
+    private CustomUserDetailsService userDetailsService;
+    
     public List<StudentExcelDTO> parse(MultipartFile file) throws Exception {
         List<StudentExcelDTO> dtoList = new ArrayList<>();
 
