@@ -25,7 +25,7 @@ import java.util.Map;
 
 import java.io.IOException;
 
-@RestController
+@Deprecated
 @RequestMapping("/api/v1/course")
 public class DifyController {
 

@@ -75,6 +75,23 @@ dify:
     # richmediakey: app-jRN6m54W3Pn8b2zHwyjVoumm
     Databasekey: dataset-vdLI5IiCOMJ4ZyUyuBv6i0F4
 
+rag:
+  deepseek:
+    api-key: ${DEEPSEEK_API_KEY:sk-3249b31bef32479cba07e8eff92829e9}
+    base-url: ${DEEPSEEK_BASE_URL:https://api.deepseek.com/v1}
+    chat-model: ${DEEPSEEK_CHAT_MODEL:deepseek-chat}
+    embedding-model: ${DEEPSEEK_EMBEDDING_MODEL:text-embedding-3-small}
+  pgvector:
+    enabled: ${RAG_PGVECTOR_ENABLED:false}
+  embedding:
+    provider: ${RAG_EMBEDDING_PROVIDER:local-model}
+    dimension: ${RAG_EMBEDDING_DIMENSION:512}
+    local:
+      model-path: ${RAG_EMBEDDING_LOCAL_MODEL_PATH:C:/Users/Administrator/models/bge-small-zh-v1.5}
+      tokenizer-path: ${RAG_EMBEDDING_LOCAL_TOKENIZER_PATH:C:/Users/Administrator/models/bge-small-zh-v1.5}
+  document-index:
+    path: ${RAG_DOCUMENT_INDEX_PATH:./data/rag-documents.json}
+
 cache:
   ttl:
     course-list-seconds: 300
