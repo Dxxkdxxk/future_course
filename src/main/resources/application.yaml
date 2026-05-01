@@ -83,7 +83,7 @@ rag:
     embedding-model: ${DEEPSEEK_EMBEDDING_MODEL:text-embedding-3-small}
   pgvector:
     enabled: ${RAG_PGVECTOR_ENABLED:true}
-    host: ${RAG_PGVECTOR_HOST:8.152.202.189}
+    host: ${RAG_PGVECTOR_HOST:172.19.222.29}
     port: ${RAG_PGVECTOR_PORT:5432}
     database: ${RAG_PGVECTOR_DATABASE:ragdb}
     user: ${RAG_PGVECTOR_USER:raguser}
