@@ -1,4 +1,4 @@
-﻿package com.lzlz.springboot.security.controller;
+package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.QuestionDto;
 import com.lzlz.springboot.security.service.QuestionService;
