@@ -2,11 +2,13 @@ package com.lzlz.springboot.security.config;
 
 import dev.langchain4j.data.segment.TextSegment;
 import dev.langchain4j.model.chat.ChatLanguageModel;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.embedding.EmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.OnnxEmbeddingModel;
 import dev.langchain4j.model.embedding.onnx.PoolingMode;
 import dev.langchain4j.model.embedding.onnx.bgesmallzh.BgeSmallZhEmbeddingModel;
 import dev.langchain4j.model.openai.OpenAiChatModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
 import dev.langchain4j.store.embedding.EmbeddingStore;
 import dev.langchain4j.store.embedding.inmemory.InMemoryEmbeddingStore;
@@ -17,8 +19,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.time.Duration;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -40,6 +40,22 @@ public class LangChain4jConfig {
                 .modelName(model)
                 .temperature(0.3)           // 知识库问答建议低温，减少幻觉
                 .maxTokens(8192)            // 大纲/题库等长输出
+                .timeout(Duration.ofSeconds(120))
+                .build();
+    }
+
+    @Bean
+    public StreamingChatLanguageModel streamingChatLanguageModel(
+            @Value("${rag.deepseek.api-key}") String apiKey,
+            @Value("${rag.deepseek.base-url}") String baseUrl,
+            @Value("${rag.deepseek.chat-model}") String model) {
+
+        return OpenAiStreamingChatModel.builder()
+                .apiKey(apiKey)
+                .baseUrl(baseUrl)
+                .modelName(model)
+                .temperature(0.3)
+                .maxTokens(8192)
                 .timeout(Duration.ofSeconds(120))
                 .build();
     }
@@ -85,28 +101,21 @@ public class LangChain4jConfig {
     @Bean
     @ConditionalOnProperty(name = "rag.pgvector.enabled", havingValue = "true")
     public EmbeddingStore<TextSegment> embeddingStore(
-            @Value("${spring.datasource.url}") String jdbcUrl,
-            @Value("${spring.datasource.username}") String username,
-            @Value("${spring.datasource.password}") String password,
+            @Value("${rag.pgvector.host}") String host,
+            @Value("${rag.pgvector.port:5432}") int port,
+            @Value("${rag.pgvector.database}") String database,
+            @Value("${rag.pgvector.user}") String user,
+            @Value("${rag.pgvector.password}") String password,
+            @Value("${rag.pgvector.table:rag_embeddings}") String table,
             @Value("${rag.embedding.dimension:512}") int embeddingDimension) {
 
-        URI uri;
-        try {
-            uri = new URI(jdbcUrl.trim().replace("jdbc:", ""));
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Invalid PostgreSQL jdbc url: " + jdbcUrl, e);
-        }
-        String host = uri.getHost();
-        int port = uri.getPort();
-        String database = uri.getPath().replaceFirst("^/", "");
-
         return PgVectorEmbeddingStore.builder()
-                .host(host)
+                .host(host.trim())
                 .port(port)
-                .database(database)
-                .user(username.trim())
+                .database(database.trim())
+                .user(user.trim())
                 .password(password.trim())
-                .table("rag_embeddings")        // 自动创建此表
+                .table(table.trim())        // 自动创建此表
                 .dimension(embeddingDimension)
                 .createTable(true)              // 首次自动建表
                 .build();

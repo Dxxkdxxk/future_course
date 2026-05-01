@@ -1,4 +1,4 @@
-package com.lzlz.springboot.security.controller;
+﻿package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.QuestionDto;
 import com.lzlz.springboot.security.service.QuestionService;
@@ -8,10 +8,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -310,4 +313,35 @@ public class RagController {
             return ResponseEntity.badRequest().body(response);
         }
     }
+    @PostMapping(value = "/{courseId}/textbooks/{textbookId}/difficult/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter getDifficultStream(
+            @PathVariable String courseId,
+            @PathVariable String textbookId,
+            @RequestBody Map<String, Object> jsonData) {
+        SseEmitter emitter = new SseEmitter(120_000L);
+        String query = (String) jsonData.get("content");
+        ragService.difficultKnowledgeStream(
+                query,
+                courseId,
+                token -> sendSse(emitter, "delta", Map.of("text", token)),
+                error -> {
+                    sendSse(emitter, "error", Map.of("code", 400, "msg", "重难点推荐知识生成失败: " + error.getMessage()));
+                    emitter.completeWithError(error);
+                },
+                () -> {
+                    sendSse(emitter, "done", Map.of("code", 200, "msg", "生成完成"));
+                    emitter.complete();
+                }
+        );
+        return emitter;
+    }
+
+    private void sendSse(SseEmitter emitter, String event, Object data) {
+        try {
+            emitter.send(SseEmitter.event().name(event).data(data));
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+        }
+    }
+
 }

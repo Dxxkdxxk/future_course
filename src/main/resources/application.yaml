@@ -82,7 +82,13 @@ rag:
     chat-model: ${DEEPSEEK_CHAT_MODEL:deepseek-chat}
     embedding-model: ${DEEPSEEK_EMBEDDING_MODEL:text-embedding-3-small}
   pgvector:
-    enabled: ${RAG_PGVECTOR_ENABLED:false}
+    enabled: ${RAG_PGVECTOR_ENABLED:true}
+    host: ${RAG_PGVECTOR_HOST:8.152.202.189}
+    port: ${RAG_PGVECTOR_PORT:5432}
+    database: ${RAG_PGVECTOR_DATABASE:ragdb}
+    user: ${RAG_PGVECTOR_USER:raguser}
+    password: ${RAG_PGVECTOR_PASSWORD:Rag@123456Strong}
+    table: ${RAG_PGVECTOR_TABLE:rag_embeddings}
   embedding:
     provider: ${RAG_EMBEDDING_PROVIDER:local-model}
     dimension: ${RAG_EMBEDDING_DIMENSION:512}

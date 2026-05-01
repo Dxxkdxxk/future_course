@@ -1,6 +1,7 @@
 package com.lzlz.springboot.security.service;
 
 import com.lzlz.springboot.security.assistant.RagAssistant;
+import com.lzlz.springboot.security.assistant.StreamingRagAssistant;
 import com.lzlz.springboot.security.rag.RagRetrievalContext;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -26,6 +28,7 @@ public class RagService {
     private final ChatLanguageModel chatLanguageModel;
     private final RagDocumentService documentService;
     private final RagAssistant ragAssistant;
+    private final StreamingRagAssistant streamingRagAssistant;
     private final RagRetrievalContext ragRetrievalContext;
 
     private <T> T withRetrievalCourseId(String courseId, Supplier<T> action) {
@@ -125,11 +128,8 @@ public class RagService {
         return chat(system, user);
     }
 
-    /**
-     * 结合向量库检索回答重难点与推荐知识（沿用 RagAssistant 的 RAG 管道）。
-     */
-    public String difficultKnowledge(String query, String courseId) {
-        String prompt = """
+    private String difficultKnowledgePrompt(String query) {
+        return """
                 重难点主题如下：
                 ---
                 %s
@@ -137,8 +137,28 @@ public class RagService {
 
                 请结合知识库中相关内容，列出与该主题密切相关的重难点、易错点以及建议补充学习的知识点；若知识库无直接依据，请明确说明并给出通用学习建议。
                 """.formatted(query == null ? "" : query);
+    }
+
+    /**
+     * 结合向量库检索回答重难点与推荐知识（沿用 RagAssistant 的 RAG 管道）。
+     */
+    public String difficultKnowledge(String query, String courseId) {
+        String prompt = difficultKnowledgePrompt(query);
         log.info("重难点推荐 query 长度: {}", prompt.length());
         return withRetrievalCourseId(courseId, () -> ragAssistant.chat(prompt));
+    }
+
+    public void difficultKnowledgeStream(String query, String courseId, Consumer<String> onToken, Consumer<Throwable> onError, Runnable onComplete) {
+        String prompt = difficultKnowledgePrompt(query);
+        log.info("重难点流式推荐 query 长度: {}", prompt.length());
+        withRetrievalCourseId(courseId, () -> {
+            streamingRagAssistant.chat(prompt)
+                    .onNext(onToken)
+                    .onError(onError)
+                    .onComplete(response -> onComplete.run())
+                    .start();
+            return null;
+        });
     }
 
     public String ask(String courseId, String question) {
