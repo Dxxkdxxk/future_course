@@ -8,22 +8,25 @@ import java.util.Map;
 public class ExamFunctionDto {
 
     /**
-     * 1. 发布测试请求参数
+     * 1. 鍙戝竷娴嬭瘯璇锋眰鍙傛暟
      */
     @Data
     public static class PublishRequest {
         private Long courseId;
-        private String title;             // 测试标题
-        private List<String> questionIds; // 勾选的题目ID列表
-        private LocalDateTime startTime;  // 开始时间
-        private LocalDateTime deadline;   // 截止时间
-        private Integer duration;         // 时长(分钟)
-        private Integer passScore;        // 及格分(可选)
+        private String title;             // 娴嬭瘯鏍囬
+        private List<String> questionIds; // 鍕鹃€夌殑棰樼洰ID鍒楄〃
+        private LocalDateTime startTime;  // 寮€濮嬫椂闂?
+        private LocalDateTime deadline;   // 鎴鏃堕棿
+        private Integer duration;         // 鏃堕暱(鍒嗛挓)
+        private Integer passScore;        // pass score
+        private Long graphId;
+        private String nodeId;
+        private Double weight;
     }
 
 
     /**
-     * [新增] 教师端-测试任务摘要
+     * [鏂板] 鏁欏笀绔?娴嬭瘯浠诲姟鎽樿
      */
     @Data
     public static class TaskSummary
@@ -39,19 +42,19 @@ public class ExamFunctionDto {
         private
         LocalDateTime deadline;
 
-        // 状态 (0:未开始, 1:进行中, 2:已结束)
-        // 建议在Service层根据当前时间动态计算返回，或者直接读库
+        // 鐘舵€?(0:鏈紑濮? 1:杩涜涓? 2:宸茬粨鏉?
+        // 寤鸿鍦⊿ervice灞傛牴鎹綋鍓嶆椂闂村姩鎬佽绠楄繑鍥烇紝鎴栬€呯洿鎺ヨ搴?
         private
         Integer status;
 
-        // 统计数据
-        private Integer submittedCount;    // 已交人数
-        private Integer totalStudentCount; // 班级总人数
+        // 缁熻鏁版嵁
+        private Integer submittedCount;    // 宸蹭氦浜烘暟
+        private Integer totalStudentCount; // 鐝骇鎬讳汉鏁?
     }
 
 
     /**
-     * [新增] 学生端-我的测试任务视图
+     * [鏂板] 瀛︾敓绔?鎴戠殑娴嬭瘯浠诲姟瑙嗗浘
      */
     @Data
     public static class StudentTaskView
@@ -66,24 +69,24 @@ public class ExamFunctionDto {
         LocalDateTime startTime;
         private
         LocalDateTime deadline;
-        private Integer duration;      // 考试时长(分钟)
+        private Integer duration;      // 鑰冭瘯鏃堕暱(鍒嗛挓)
 
-        // 任务本身的状态 (基于时间)
-        // 0: 未开始 (时间未到), 1: 进行中, 2: 已截止
+        // 浠诲姟鏈韩鐨勭姸鎬?(鍩轰簬鏃堕棿)
+        // 0: 鏈紑濮?(鏃堕棿鏈埌), 1: 杩涜涓? 2: 宸叉埅姝?
         private
         Integer taskStatus;
 
-        // 学生个人的状态 (基于记录)
-        // 0: 未参加 (可开始考试), 1: 已提交(待批改), 2: 已完成(出成绩)
+        // 瀛︾敓涓汉鐨勭姸鎬?(鍩轰簬璁板綍)
+        // 0: 鏈弬鍔?(鍙紑濮嬭€冭瘯), 1: 宸叉彁浜?寰呮壒鏀?, 2: 宸插畬鎴?鍑烘垚缁?
         private
         Integer myStatus;
 
-        private Integer myScore;       // 我的得分 (仅当 myStatus=2 时显示)
+        private Integer myScore;       // 鎴戠殑寰楀垎 (浠呭綋 myStatus=2 鏃舵樉绀?
     }
 
 
     /**
-     * [新增] 学生端-试卷内容视图 (不含答案)
+     * [鏂板] 瀛︾敓绔?璇曞嵎鍐呭瑙嗗浘 (涓嶅惈绛旀)
      */
     @Data
     public static class PaperView
@@ -92,176 +95,179 @@ public class ExamFunctionDto {
         Long taskId;
         private
         Long paperId;
-        private String title;          // 试卷/测试标题
-        private Integer duration;      // 考试时长(分钟)
-        private LocalDateTime deadline;// 截止时间
-        private Integer remainingSeconds; // 剩余秒数 (可选，用于前端倒计时)
+        private String title;          // 璇曞嵎/娴嬭瘯鏍囬
+        private Integer duration;      // 鑰冭瘯鏃堕暱(鍒嗛挓)
+        private LocalDateTime deadline;// 鎴鏃堕棿
+        private Integer remainingSeconds; // 鍓╀綑绉掓暟 (鍙€夛紝鐢ㄤ簬鍓嶇鍊掕鏃?
 
-        private List<QuestionItem> questions; // 题目列表
+        private List<QuestionItem> questions; // 棰樼洰鍒楄〃
     }
 
     /**
-     * [新增] 单个题目视图 (脱敏版)
+     * [鏂板] 鍗曚釜棰樼洰瑙嗗浘 (鑴辨晱鐗?
      */
     @Data
     public static class QuestionItem
     {
-        private String id;             // 题目ID
-        private String type;           // 单选题/多选题/填空题/简答题
-        private String stem;           // 题干 (包含选项内容)
-        private Integer score;         // 分值
-        private Integer sortOrder;     // 题号
+        private String id;             // 棰樼洰ID
+        private String type;           // 鍗曢€夐/澶氶€夐/濉┖棰?绠€绛旈
+        private String stem;           // 棰樺共 (鍖呭惈閫夐」鍐呭)
+        private Integer score;         // 鍒嗗€?
+        private Integer sortOrder;     // 棰樺彿
     }
 
 
-    // ... 在 ExamFunctionDto 类中添加 ...
+    // ... 鍦?ExamFunctionDto 绫讳腑娣诲姞 ...
 
     /**
-     * [新增] 提交试卷请求
+     * [鏂板] 鎻愪氦璇曞嵎璇锋眰
      */
     @Data
     public static class SubmitRequest {
-        // Key: QuestionId (题目ID), Value: User Answer (学生答案)
-        // 注意：多选题用逗号隔开(A,B)，填空题用分号隔开(Answer1;Answer2)
+        // Key: QuestionId (棰樼洰ID), Value: User Answer (瀛︾敓绛旀)
+        // 娉ㄦ剰锛氬閫夐鐢ㄩ€楀彿闅斿紑(A,B)锛屽～绌洪鐢ㄥ垎鍙烽殧寮€(Answer1;Answer2)
         private Map<String, String> answers;
     }
 
     /**
-     * [新增] 提交结果响应
+     * [鏂板] 鎻愪氦缁撴灉鍝嶅簲
      */
     @Data
     public static class SubmitResult {
-        private Integer finalScore; // 如果全客观题，直接出分；否则为null
-        private String message;     // 提示信息
+        private Integer finalScore; // 濡傛灉鍏ㄥ瑙傞锛岀洿鎺ュ嚭鍒嗭紱鍚﹀垯涓簄ull
+        private String message;     // 鎻愮ず淇℃伅
     }
 
 
-    // ... 在 ExamFunctionDto 类中 ...
+    // ... 鍦?ExamFunctionDto 绫讳腑 ...
 
     /**
-     * [新增] 学生提交情况列表项
+     * [鏂板] 瀛︾敓鎻愪氦鎯呭喌鍒楄〃椤?
      */
     @Data
     public static class StudentSubmissionDto {
-        private Long recordId;        // 提交记录ID (未考则为null)
+        private Long recordId;        // 鎻愪氦璁板綍ID (鏈€冨垯涓簄ull)
         private Integer studentId;
         private String studentName;
-        private String studentNo;     // 学号/用户名
+        private String studentNo;     // 瀛﹀彿/鐢ㄦ埛鍚?
 
-        // 状态: 0:未开始, 1:进行中, 2:待批改(已交), 3:已完成(出分)
-        // 注意：这里为了前端展示方便，我们重新定义了一套状态码，或者沿用数据库状态
-        // 建议：
-        // -1: 未参加 (无记录)
-        //  0: 答题中 (有记录但status=0)
-        //  1: 待批改 (status=1)
-        //  2: 已完成 (status=2)
+        // 鐘舵€? 0:鏈紑濮? 1:杩涜涓? 2:寰呮壒鏀?宸蹭氦), 3:宸插畬鎴?鍑哄垎)
+        // 娉ㄦ剰锛氳繖閲屼负浜嗗墠绔睍绀烘柟渚匡紝鎴戜滑閲嶆柊瀹氫箟浜嗕竴濂楃姸鎬佺爜锛屾垨鑰呮部鐢ㄦ暟鎹簱鐘舵€?
+        // 寤鸿锛?
+        // -1: 鏈弬鍔?(鏃犺褰?
+        //  0: 绛旈涓?(鏈夎褰曚絾status=0)
+        //  1: 寰呮壒鏀?(status=1)
+        //  2: 宸插畬鎴?(status=2)
         private Integer status;
 
-        private Integer totalScore;   // 成绩 (未出分为null)
-        private LocalDateTime submitTime; // 提交时间 (取 record.updatedAt 或 createdAt)
+        private Integer totalScore;   // 鎴愮哗 (鏈嚭鍒嗕负null)
+        private LocalDateTime submitTime; // 鎻愪氦鏃堕棿 (鍙?record.updatedAt 鎴?createdAt)
     }
 
-    // ... 在 ExamFunctionDto 类中 ...
+    // ... 鍦?ExamFunctionDto 绫讳腑 ...
 
     /**
-     * [新增] 阅卷视图 (教师端)
+     * [鏂板] 闃呭嵎瑙嗗浘 (鏁欏笀绔?
      */
     @Data
     public static class GradingView {
         private Long recordId;
         private Integer studentId;
         private String studentName;
-        private Integer totalScore;    // 当前总分
-        private Integer fullScore;     // 卷面满分 (可选)
+        private Integer totalScore;    // 褰撳墠鎬诲垎
+        private Integer fullScore;     // 鍗烽潰婊″垎 (鍙€?
         private List<GradingQuestionItem> questions;
     }
 
     /**
-     * [新增] 阅卷题目明细
+     * [鏂板] 闃呭嵎棰樼洰鏄庣粏
      */
     @Data
     public static class GradingQuestionItem {
-        private String id;             // 题目ID
-        private String stem;           // 题干
-        private String type;           // 题型
-        private Integer score;         // 本题满分
-        private Integer sortOrder;     // 题号
+        private String id;             // 棰樼洰ID
+        private String stem;           // 棰樺共
+        private String type;           // 棰樺瀷
+        private Integer score;         // 鏈婊″垎
+        private Integer sortOrder;     // 棰樺彿
 
-        private String studentAnswer;  // 学生填写的答案
-        private String standardAnswer; // 标准答案
-        private Integer gainedScore;   // 学生实际得分
-        private Boolean isCorrect;     // 是否自动判定为正确
+        private String studentAnswer;  // 瀛︾敓濉啓鐨勭瓟妗?
+        private String standardAnswer; // 鏍囧噯绛旀
+        private Integer gainedScore;   // 瀛︾敓瀹為檯寰楀垎
+        private Boolean isCorrect;     // 鏄惁鑷姩鍒ゅ畾涓烘纭?
 
-        // 辅助字段：是否为主观题 (用于前端高亮需要人工批改的题)
+        // 杈呭姪瀛楁锛氭槸鍚︿负涓昏棰?(鐢ㄤ簬鍓嶇楂樹寒闇€瑕佷汉宸ユ壒鏀圭殑棰?
         private Boolean isSubjective;
     }
 
 
-// ... 在 ExamFunctionDto 类中 ...
+// ... 鍦?ExamFunctionDto 绫讳腑 ...
 
     /**
-     * [新增] 教师评分请求
+     * [鏂板] 鏁欏笀璇勫垎璇锋眰
      */
     @Data
     public static class GradeRequest {
-        // 支持批量提交多道题的分数
+        // 鏀寔鎵归噺鎻愪氦澶氶亾棰樼殑鍒嗘暟
         private List<QuestionGrade> grades;
 
         @Data
         public static class QuestionGrade {
-            private String questionId; // 题目ID
-            private Integer score;     // 教师给出的分数
+            private String questionId; // 棰樼洰ID
+            private Integer score;     // 鏁欏笀缁欏嚭鐨勫垎鏁?
         }
     }
 
 
-    // ... 在 ExamFunctionDto 类中 ...
+    // ... 鍦?ExamFunctionDto 绫讳腑 ...
 
     /**
-     * [新增] 学生考后结果视图
+     * [鏂板] 瀛︾敓鑰冨悗缁撴灉瑙嗗浘
      */
     @Data
     public static class StudentResultView {
         private Long taskId;
         private String title;
-        private Integer totalScore;    // 学生总分
-        private Integer fullScore;     // 试卷满分
+        private Integer totalScore;    // 瀛︾敓鎬诲垎
+        private Integer fullScore;     // 璇曞嵎婊″垎
         private List<ResultQuestionItem> questions;
     }
 
     /**
-     * [新增] 结果题目明细
+     * [鏂板] 缁撴灉棰樼洰鏄庣粏
      */
     @Data
     public static class ResultQuestionItem {
-        private String id;             // 题目ID
-        private String stem;           // 题干
-        private String type;           // 题型
-        private Integer score;         // 本题满分
-        private Integer sortOrder;     // 题号
+        private String id;             // 棰樼洰ID
+        private String stem;           // 棰樺共
+        private String type;           // 棰樺瀷
+        private Integer score;         // 鏈婊″垎
+        private Integer sortOrder;     // 棰樺彿
 
-        private String studentAnswer;  // 学生写的
-        private String standardAnswer; // 标准答案
-        private String analysis;       // 解析 (核心价值)
+        private String studentAnswer;  // 瀛︾敓鍐欑殑
+        private String standardAnswer; // 鏍囧噯绛旀
+        private String analysis;       // 瑙ｆ瀽 (鏍稿績浠峰€?
 
-        private Integer gainedScore;   // 得分
-        private Boolean isCorrect;     // 是否正确
+        private Integer gainedScore;   // 寰楀垎
+        private Boolean isCorrect;     // 鏄惁姝ｇ‘
     }
 
 
-    // ... 在 ExamFunctionDto 类中 ...
+    // ... 鍦?ExamFunctionDto 绫讳腑 ...
 
     /**
-     * [新增] 学生加入的班级信息
+     * [鏂板] 瀛︾敓鍔犲叆鐨勭彮绾т俊鎭?
      */
     @Data
     public static class MyClassInfo {
         private Long classId;
-        private String className;   // 班级名称 (如: 2024秋季Java一班)
+        private String className;   // 鐝骇鍚嶇О (濡? 2024绉嬪Java涓€鐝?
 
         private Long courseId;
-        private String courseName;  // 课程名称 (如: Java程序设计)
+        private String courseName;  // 璇剧▼鍚嶇О (濡? Java绋嬪簭璁捐)
 
-        private String teacherName; // 任课教师 (可选)
+        private String teacherName; // 浠昏鏁欏笀 (鍙€?
     }
 }
+
+
+

@@ -9,7 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 public interface HomeworkService {
-    void createHomework(Long courseId, CreateHomeworkRequest request, MultipartFile[] files);
+    Long createHomework(Long courseId, CreateHomeworkRequest request, MultipartFile[] files);
 
     List<Homework> getHomeworkList(Long courseId);
 

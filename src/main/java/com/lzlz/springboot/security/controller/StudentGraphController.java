@@ -6,6 +6,7 @@ import com.lzlz.springboot.security.dto.GraphInfoResponse;
 import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.service.CurrentUserResolver;
 import com.lzlz.springboot.security.service.GraphBuildService;
+import com.lzlz.springboot.security.service.GraphLearningProgressService;
 import com.lzlz.springboot.security.service.StudentCourseAccessService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -30,6 +31,9 @@ public class StudentGraphController {
     @Autowired
     private CurrentUserResolver currentUserResolver;
 
+    @Autowired
+    private GraphLearningProgressService graphLearningProgressService;
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<GraphInfoResponse>>> getGraphsForCourse(
             @PathVariable long courseId,
@@ -48,6 +52,7 @@ public class StudentGraphController {
         User currentUser = currentUserResolver.requireUser(user);
         studentCourseAccessService.checkGraphAccess(currentUser.getId(), courseId, graphId);
         GraphBuildResponse response = graphBuildService.getGraphDetails(graphId);
+        response = graphLearningProgressService.fillStudentProgress(courseId, graphId, currentUser.getId(), response);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

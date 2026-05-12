@@ -10,4 +10,6 @@ public class GraphNode {
     private String name;
     private String description;
     private String label; // "KnowledgeModule", "KnowledgeUnit", "KnowledgePoint"
+    private GraphNodeProgress progress;
+    private GraphNodeBindingSummary bindingSummary;
 }

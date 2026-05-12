@@ -25,6 +25,7 @@ import com.lzlz.springboot.security.mapper.StudentPaperRecordMapper;
 import com.lzlz.springboot.security.mapper.TestTaskMapper;
 import com.lzlz.springboot.security.mapper.UserMapper;
 import com.lzlz.springboot.security.service.ExamFunctionService;
+import com.lzlz.springboot.security.service.GraphLearningProgressService;
 import com.lzlz.springboot.security.service.StudentCourseAccessService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +57,7 @@ public class ExamFunctionServiceImpl implements ExamFunctionService {
     private final UserMapper userMapper;
     private final CourseMapper courseMapper;
     private final StudentCourseAccessService studentCourseAccessService;
+    private final GraphLearningProgressService graphLearningProgressService;
 
     public ExamFunctionServiceImpl(PaperMapper paperMapper,
                                    PaperQuestionMapper paperQuestionMapper,
@@ -67,7 +69,8 @@ public class ExamFunctionServiceImpl implements ExamFunctionService {
                                    StudentPaperDetailMapper studentPaperDetailMapper,
                                    UserMapper userMapper,
                                    CourseMapper courseMapper,
-                                   StudentCourseAccessService studentCourseAccessService) {
+                                   StudentCourseAccessService studentCourseAccessService,
+                                   GraphLearningProgressService graphLearningProgressService) {
         this.paperMapper = paperMapper;
         this.paperQuestionMapper = paperQuestionMapper;
         this.questionMapper = questionMapper;
@@ -79,6 +82,7 @@ public class ExamFunctionServiceImpl implements ExamFunctionService {
         this.userMapper = userMapper;
         this.courseMapper = courseMapper;
         this.studentCourseAccessService = studentCourseAccessService;
+        this.graphLearningProgressService = graphLearningProgressService;
     }
 
     @Override
@@ -135,6 +139,14 @@ public class ExamFunctionServiceImpl implements ExamFunctionService {
         task.setDuration(request.getDuration());
         task.setStatus(0);
         testTaskMapper.insert(task);
+
+        if (request.getGraphId() != null && request.getNodeId() != null && !request.getNodeId().isBlank()) {
+            com.lzlz.springboot.security.dto.NodeBindingDto.UpsertRequest bindingRequest = new com.lzlz.springboot.security.dto.NodeBindingDto.UpsertRequest();
+            bindingRequest.setTaskType("EXAM");
+            bindingRequest.setTaskId(task.getId());
+            bindingRequest.setWeight(request.getWeight());
+            graphLearningProgressService.bindNodeTask(request.getCourseId(), request.getGraphId(), request.getNodeId(), bindingRequest);
+        }
 
         return task.getId();
     }
@@ -342,6 +354,10 @@ public class ExamFunctionServiceImpl implements ExamFunctionService {
         }
         studentPaperRecordMapper.updateById(record);
 
+        if (!hasSubjective) {
+            graphLearningProgressService.recalculateStudentByExamTask(task.getCourseId(), task.getId(), studentId);
+        }
+
         ExamFunctionDto.SubmitResult result = new ExamFunctionDto.SubmitResult();
         result.setFinalScore(hasSubjective ? null : totalScore);
         result.setMessage(hasSubjective ? "Submitted, waiting for grading" : "Submitted");
@@ -492,6 +508,11 @@ public class ExamFunctionServiceImpl implements ExamFunctionService {
             record.setIsPassed(totalScore >= paper.getPassScore());
         }
         studentPaperRecordMapper.updateById(record);
+
+        TestTask task = testTaskMapper.selectOne(new QueryWrapper<TestTask>().eq("paper_id", record.getPaperId()).last("LIMIT 1"));
+        if (task != null) {
+            graphLearningProgressService.recalculateStudentByExamTask(task.getCourseId(), task.getId(), record.getStudentId());
+        }
     }
 
     @Override

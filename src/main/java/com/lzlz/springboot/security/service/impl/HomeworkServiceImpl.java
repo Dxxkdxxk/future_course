@@ -16,6 +16,7 @@ import com.lzlz.springboot.security.service.HomeworkService;
 import com.lzlz.springboot.security.service.MinIOService;
 import com.lzlz.springboot.security.service.RedisCacheService;
 import com.lzlz.springboot.security.service.StudentCourseAccessService;
+import com.lzlz.springboot.security.service.GraphLearningProgressService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -45,6 +46,9 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     @Autowired
     private StudentCourseAccessService studentCourseAccessService;
+
+    @Autowired
+    private GraphLearningProgressService graphLearningProgressService;
 
     @Value("${cache.ttl.homework-list-seconds:300}")
     private long homeworkListTtlSeconds;
@@ -134,7 +138,7 @@ public class HomeworkServiceImpl implements HomeworkService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void createHomework(Long courseId, CreateHomeworkRequest request, MultipartFile[] files) {
+    public Long createHomework(Long courseId, CreateHomeworkRequest request, MultipartFile[] files) {
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime startTime = request.getStartTime() != null ? request.getStartTime() : now;
         LocalDateTime endTime = request.getEndTime();
@@ -163,6 +167,15 @@ public class HomeworkServiceImpl implements HomeworkService {
 
         redisCacheService.delete(RedisKeys.homeworkList(courseId));
         redisCacheService.deleteByPrefix("homework:detail:teacher:" + courseId + ":");
+
+        if (request.getGraphId() != null && request.getNodeId() != null && !request.getNodeId().isBlank()) {
+            com.lzlz.springboot.security.dto.NodeBindingDto.UpsertRequest bindingRequest = new com.lzlz.springboot.security.dto.NodeBindingDto.UpsertRequest();
+            bindingRequest.setTaskType("HOMEWORK");
+            bindingRequest.setTaskId(homework.getId());
+            bindingRequest.setWeight(request.getWeight());
+            graphLearningProgressService.bindNodeTask(courseId, request.getGraphId(), request.getNodeId(), bindingRequest);
+        }
+        return homework.getId();
     }
 
     @Override

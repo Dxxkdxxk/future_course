@@ -645,4 +645,257 @@ public class GraphRepository {
                     });
         }
     }
+
+    public void bindTaskToNode(long graphId, String nodeId, long courseId, String taskType, Long taskId, Double weight) {
+        String relType;
+        String taskLabel;
+        String taskKey;
+        if ("EXAM".equalsIgnoreCase(taskType)) {
+            relType = "BINDS_EXAM";
+            taskLabel = "ExamTaskRef";
+            taskKey = "taskId";
+        } else if ("HOMEWORK".equalsIgnoreCase(taskType)) {
+            relType = "BINDS_HOMEWORK";
+            taskLabel = "HomeworkRef";
+            taskKey = "homeworkId";
+        } else {
+            throw new CustomGraphException(400, "Unsupported taskType: " + taskType);
+        }
+        double effectiveWeight = (weight == null || weight <= 0) ? 1.0 : weight;
+        String query = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) "
+                + "MERGE (t:" + taskLabel + " {" + taskKey + ": $taskId}) "
+                + "MERGE (n)-[r:" + relType + " {courseId: $courseId, " + taskKey + ": $taskId}]->(t) "
+                + "SET r.weight = $weight, r.createdAt = datetime()";
+        try (Session session = neo4jDriver.session()) {
+            session.executeWrite(tx -> {
+                tx.run(query, Map.of(
+                        "nodeId", nodeId,
+                        "graphId", graphId,
+                        "courseId", courseId,
+                        "taskId", taskId,
+                        "weight", effectiveWeight
+                ));
+                return null;
+            });
+        }
+    }
+
+    public List<Map<String, Object>> listNodeBindings(long graphId, String nodeId, long courseId) {
+        String query = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId})-[r]->(t) "
+                + "WHERE (type(r) = 'BINDS_EXAM' OR type(r) = 'BINDS_HOMEWORK') AND r.courseId = $courseId "
+                + "RETURN type(r) AS relType, coalesce(r.taskId, r.homeworkId) AS taskId, coalesce(r.weight, 1.0) AS weight";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> tx.run(query, Map.of(
+                    "nodeId", nodeId,
+                    "graphId", graphId,
+                    "courseId", courseId
+            )).list(Record::asMap));
+        }
+    }
+
+    public void removeNodeBinding(long graphId, String nodeId, long courseId, String taskType, Long taskId) {
+        String relType = "EXAM".equalsIgnoreCase(taskType) ? "BINDS_EXAM" : "BINDS_HOMEWORK";
+        String prop = "EXAM".equalsIgnoreCase(taskType) ? "taskId" : "homeworkId";
+        String query = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId})-[r:" + relType + " {courseId: $courseId, " + prop + ": $taskId}]->() DELETE r";
+        try (Session session = neo4jDriver.session()) {
+            session.executeWrite(tx -> {
+                tx.run(query, Map.of(
+                        "nodeId", nodeId,
+                        "graphId", graphId,
+                        "courseId", courseId,
+                        "taskId", taskId
+                ));
+                return null;
+            });
+        }
+    }
+
+    public void upsertVideoProgress(long graphId, String nodeId, long courseId, int studentId,
+                                    String resourceId, int watchedSeconds, int durationSeconds) {
+        int safeDuration = Math.max(1, durationSeconds);
+        int safeWatched = Math.max(0, Math.min(watchedSeconds, safeDuration));
+        double progress = (safeWatched * 1.0d) / safeDuration;
+        String query = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId})-[:HAS_RESOURCE]->(r:Resource {resourceId: $resourceId, graphId: $graphId}) "
+                + "MERGE (s:Student {studentId: $studentId}) "
+                + "MERGE (s)-[wr:WATCHED_RESOURCE {courseId: $courseId, graphId: $graphId, nodeId: $nodeId, resourceId: $resourceId}]->(r) "
+                + "SET wr.watchedSeconds = $watchedSeconds, wr.durationSeconds = $durationSeconds, wr.progressRate = $progressRate, wr.updatedAt = datetime()";
+        try (Session session = neo4jDriver.session()) {
+            session.executeWrite(tx -> {
+                tx.run(query, Map.of(
+                        "nodeId", nodeId,
+                        "graphId", graphId,
+                        "resourceId", resourceId,
+                        "courseId", courseId,
+                        "studentId", studentId,
+                        "watchedSeconds", safeWatched,
+                        "durationSeconds", safeDuration,
+                        "progressRate", progress
+                ));
+                return null;
+            });
+        }
+    }
+
+    public double calculateNodeVideoProgress(long graphId, String nodeId, long courseId, int studentId) {
+        String query = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId})-[:HAS_RESOURCE]->(r:Resource {graphId: $graphId}) "
+                + "WHERE coalesce(r.isVideo, false) = true "
+                + "OPTIONAL MATCH (s:Student {studentId: $studentId})-[wr:WATCHED_RESOURCE {courseId: $courseId, graphId: $graphId, nodeId: $nodeId, resourceId: r.resourceId}]->(r) "
+                + "WITH sum(toFloat(coalesce(wr.watchedSeconds, 0))) AS watched, sum(toFloat(coalesce(wr.durationSeconds, 0))) AS duration "
+                + "RETURN CASE WHEN duration <= 0 THEN 0.0 ELSE (watched / duration) * 100.0 END AS progress";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(query, Map.of(
+                        "nodeId", nodeId,
+                        "graphId", graphId,
+                        "courseId", courseId,
+                        "studentId", studentId
+                ));
+                if (!result.hasNext()) {
+                    return 0.0d;
+                }
+                return result.single().get("progress").asDouble(0.0d);
+            });
+        }
+    }
+
+    public int countNodeVideos(long graphId, String nodeId) {
+        String query = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId})-[:HAS_RESOURCE]->(r:Resource {graphId: $graphId}) "
+                + "WHERE coalesce(r.isVideo, false) = true RETURN count(r) AS cnt";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> tx.run(query, Map.of("nodeId", nodeId, "graphId", graphId))
+                    .single().get("cnt").asInt(0));
+        }
+    }
+
+    public void upsertNodeProgress(long graphId, String nodeId, long courseId, int studentId,
+                                   double videoProgress, double examProgress, double homeworkProgress, double overallProgress) {
+        String query = "MATCH (n:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) "
+                + "MERGE (s:Student {studentId: $studentId}) "
+                + "MERGE (s)-[lp:LEARNS_NODE {courseId: $courseId, graphId: $graphId, nodeId: $nodeId}]->(n) "
+                + "SET lp.videoProgress = $videoProgress, lp.examProgress = $examProgress, lp.homeworkProgress = $homeworkProgress, "
+                + "lp.overallProgress = $overallProgress, lp.updatedAt = datetime()";
+        try (Session session = neo4jDriver.session()) {
+            session.executeWrite(tx -> {
+                tx.run(query, Map.of(
+                        "nodeId", nodeId,
+                        "graphId", graphId,
+                        "courseId", courseId,
+                        "studentId", studentId,
+                        "videoProgress", videoProgress,
+                        "examProgress", examProgress,
+                        "homeworkProgress", homeworkProgress,
+                        "overallProgress", overallProgress
+                ));
+                return null;
+            });
+        }
+    }
+
+    public Map<String, Object> getNodeProgress(long graphId, String nodeId, long courseId, int studentId) {
+        String query = "MATCH (s:Student {studentId: $studentId})-[lp:LEARNS_NODE {courseId: $courseId, graphId: $graphId, nodeId: $nodeId}]->(:KnowledgeNode {nodeId: $nodeId, graphId: $graphId}) "
+                + "RETURN lp.videoProgress AS videoProgress, lp.examProgress AS examProgress, lp.homeworkProgress AS homeworkProgress, "
+                + "lp.overallProgress AS overallProgress, toString(lp.updatedAt) AS updatedAt";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(query, Map.of(
+                        "nodeId", nodeId,
+                        "graphId", graphId,
+                        "courseId", courseId,
+                        "studentId", studentId
+                ));
+                if (!result.hasNext()) {
+                    return null;
+                }
+                return result.single().asMap();
+            });
+        }
+    }
+
+    public List<Map<String, Object>> listNodeBindingsByType(long graphId, String nodeId, long courseId, String taskType) {
+        String relType = "EXAM".equalsIgnoreCase(taskType) ? "BINDS_EXAM" : "BINDS_HOMEWORK";
+        String taskKey = "EXAM".equalsIgnoreCase(taskType) ? "taskId" : "homeworkId";
+        String query = "MATCH (:KnowledgeNode {nodeId: $nodeId, graphId: $graphId})-[r:" + relType + " {courseId: $courseId}]->() "
+                + "RETURN r." + taskKey + " AS taskId, coalesce(r.weight, 1.0) AS weight";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> tx.run(query, Map.of(
+                    "nodeId", nodeId,
+                    "graphId", graphId,
+                    "courseId", courseId
+            )).list(Record::asMap));
+        }
+    }
+
+    public List<Map<String, Object>> listBoundNodesForTask(long courseId, String taskType, Long taskId) {
+        String relType = "EXAM".equalsIgnoreCase(taskType) ? "BINDS_EXAM" : "BINDS_HOMEWORK";
+        String taskKey = "EXAM".equalsIgnoreCase(taskType) ? "taskId" : "homeworkId";
+        String query = "MATCH (n:KnowledgeNode)-[r:" + relType + " {courseId: $courseId, " + taskKey + ": $taskId}]->() "
+                + "RETURN n.graphId AS graphId, n.nodeId AS nodeId";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> tx.run(query, Map.of(
+                    "courseId", courseId,
+                    "taskId", taskId
+            )).list(Record::asMap));
+        }
+    }
+
+    public String findResourceOwnerNodeId(long graphId, String resourceId) {
+        String query = "MATCH (n:KnowledgeNode {graphId: $graphId})-[:HAS_RESOURCE]->(r:Resource {graphId: $graphId, resourceId: $resourceId}) "
+                + "RETURN n.nodeId AS nodeId LIMIT 1";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(query, Map.of("graphId", graphId, "resourceId", resourceId));
+                if (!result.hasNext()) {
+                    return null;
+                }
+                return result.single().get("nodeId").asString();
+            });
+        }
+    }
+
+    public List<String> listAncestorNodeIds(long graphId, String nodeId) {
+        String query = "MATCH path=(ancestor:KnowledgeNode {graphId: $graphId})-[:contains*1..]->(n:KnowledgeNode {graphId: $graphId, nodeId: $nodeId}) "
+                + "RETURN ancestor.nodeId AS nodeId, min(length(path)) AS depth "
+                + "ORDER BY depth ASC";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> tx.run(query, Map.of(
+                    "graphId", graphId,
+                    "nodeId", nodeId
+            )).list(r -> r.get("nodeId").asString()));
+        }
+    }
+
+    public Map<String, Double> calculateParentProgressFromChildren(long graphId, String parentNodeId, long courseId, int studentId) {
+        String query = "MATCH (p:KnowledgeNode {graphId: $graphId, nodeId: $parentNodeId})-[:contains]->(c:KnowledgeNode {graphId: $graphId}) "
+                + "OPTIONAL MATCH (s:Student {studentId: $studentId})-[lp:LEARNS_NODE {courseId: $courseId, graphId: $graphId, nodeId: c.nodeId}]->(c) "
+                + "RETURN "
+                + "avg(coalesce(lp.videoProgress, 0.0)) AS videoProgress, "
+                + "avg(coalesce(lp.examProgress, 0.0)) AS examProgress, "
+                + "avg(coalesce(lp.homeworkProgress, 0.0)) AS homeworkProgress, "
+                + "avg(coalesce(lp.overallProgress, 0.0)) AS overallProgress";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(query, Map.of(
+                        "graphId", graphId,
+                        "parentNodeId", parentNodeId,
+                        "courseId", courseId,
+                        "studentId", studentId
+                ));
+                if (!result.hasNext()) {
+                    return Map.of(
+                            "videoProgress", 0.0d,
+                            "examProgress", 0.0d,
+                            "homeworkProgress", 0.0d,
+                            "overallProgress", 0.0d
+                    );
+                }
+                Record record = result.single();
+                return Map.of(
+                        "videoProgress", record.get("videoProgress").asDouble(0.0d),
+                        "examProgress", record.get("examProgress").asDouble(0.0d),
+                        "homeworkProgress", record.get("homeworkProgress").asDouble(0.0d),
+                        "overallProgress", record.get("overallProgress").asDouble(0.0d)
+                );
+            });
+        }
+    }
 }

@@ -13,6 +13,7 @@ import com.lzlz.springboot.security.mapper.UserMapper;
 import com.lzlz.springboot.security.service.HomeworkSubmissionService;
 import com.lzlz.springboot.security.service.MinIOService;
 import com.lzlz.springboot.security.service.StudentCourseAccessService;
+import com.lzlz.springboot.security.service.GraphLearningProgressService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,9 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
 
     @Autowired
     private StudentCourseAccessService studentCourseAccessService;
+
+    @Autowired
+    private GraphLearningProgressService graphLearningProgressService;
 
     private void validateRelation(Long courseId, Long homeworkId, Long submissionId) {
         if (submissionId != null) {
@@ -215,6 +219,9 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
         submission.setStatus(2);
         submission.setGradedAt(LocalDateTime.now());
         submissionMapper.updateById(submission);
+
+        Long resolvedCourseId = homework == null ? courseId : homework.getCourseId();
+        graphLearningProgressService.recalculateStudentByHomework(resolvedCourseId, submission.getHomeworkId(), submission.getStudentId());
     }
 
     @Override

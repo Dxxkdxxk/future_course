@@ -27,4 +27,8 @@ public class CreateHomeworkRequest {
 
     // Comma-separated MinIO object names.
     private String attachmentUrls;
+
+    private Long graphId;
+    private String nodeId;
+    private Double weight;
 }
