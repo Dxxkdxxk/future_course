@@ -1,0 +1,54 @@
+package com.lzlz.springboot.security.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.lzlz.springboot.security.dto.SaveVideoProgressDTO;
+import com.lzlz.springboot.security.entity.VideoPlayProgress;
+import com.lzlz.springboot.security.mapper.VideoPlayProgressMapper;
+import com.lzlz.springboot.security.service.VideoPlayProgressService;
+import jakarta.annotation.Resource;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+public class VideoPlayProgressServiceImpl implements VideoPlayProgressService {
+
+    @Resource
+    private VideoPlayProgressMapper progressMapper;
+
+    /**
+     * 保存/更新进度：存在则更新，不存在则新增
+     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void saveOrUpdateProgress(Long userId, SaveVideoProgressDTO dto) {
+        LambdaQueryWrapper<VideoPlayProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(VideoPlayProgress::getUserId, userId)
+                .eq(VideoPlayProgress::getVideoId, dto.getResourceId()); // 这里改了！
+
+        VideoPlayProgress progress = progressMapper.selectOne(wrapper);
+
+        if (progress == null) {
+            progress = new VideoPlayProgress();
+            progress.setUserId(userId);
+            progress.setVideoId(dto.getResourceId());  // 改这里
+            progress.setProgressSeconds(dto.getWatchedSeconds()); // 改这里
+            progressMapper.insert(progress);
+        } else {
+            progress.setProgressSeconds(dto.getWatchedSeconds()); // 改这里
+            progressMapper.updateById(progress);
+        }
+    }
+
+    /**
+     * 查询播放进度，无记录返回 0
+     */
+    @Override
+    public Integer getProgress(Long userId, Long videoId) {
+        LambdaQueryWrapper<VideoPlayProgress> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(VideoPlayProgress::getUserId, userId)
+                .eq(VideoPlayProgress::getVideoId, videoId);
+
+        VideoPlayProgress progress = progressMapper.selectOne(wrapper);
+        return progress == null ? 0 : progress.getProgressSeconds();
+    }
+}
