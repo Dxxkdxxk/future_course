@@ -42,13 +42,13 @@ public class VideoPlayProgressServiceImpl implements VideoPlayProgressService {
     /**
      * 查询播放进度，无记录返回 0
      */
-    @Override
-    public Integer getProgress(Long userId, Long videoId) {
-        LambdaQueryWrapper<VideoPlayProgress> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(VideoPlayProgress::getUserId, userId)
-                .eq(VideoPlayProgress::getVideoId, videoId);
+@Override
+public Integer getProgress(Long userId, String resourceId) {
+    LambdaQueryWrapper<VideoPlayProgress> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(VideoPlayProgress::getUserId, userId)
+           .eq(VideoPlayProgress::getVideoId, resourceId);
 
-        VideoPlayProgress progress = progressMapper.selectOne(wrapper);
-        return progress == null ? 0 : progress.getProgressSeconds();
-    }
+    VideoPlayProgress progress = progressMapper.selectOne(wrapper);
+    return progress == null ? 0 : progress.getProgressSeconds();
+}
 }
