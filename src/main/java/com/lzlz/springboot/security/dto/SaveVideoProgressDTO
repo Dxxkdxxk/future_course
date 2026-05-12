@@ -1,19 +1,18 @@
 package com.lzlz.springboot.security.dto;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-
+import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
 
 @Data
-@Schema(description = "保存视频播放进度请求")
 public class SaveVideoProgressDTO {
 
-    @NotNull(message = "视频ID不能为空")
-    @Schema(description = "视频ID")
-    private Long videoId;
+    @NotBlank(message = "资源ID不能为空")
+    private String resourceId;  // 对应前端：resourceId（字符串）
 
-    @NotNull(message = "播放进度不能为空")
-    @Schema(description = "播放进度（单位：秒）")
-    private Integer progressSeconds;
+    @NotNull(message = "已观看时长不能为空")
+    private Integer watchedSeconds;  // 对应前端：watchedSeconds
+
+    @NotNull(message = "视频总时长不能为空")
+    private Integer durationSeconds; // 对应前端：durationSeconds
 }
