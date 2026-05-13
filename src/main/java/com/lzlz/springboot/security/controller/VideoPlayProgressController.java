@@ -28,13 +28,13 @@ public class VideoPlayProgressController {
     }
 
     // ====================== 查询进度：路径参数 courseId ======================
-    @GetMapping("/get/{courseId}")
-    public Result<Integer> getProgress(
-            @RequestHeader("userId") Long userId,
-            @PathVariable Long courseId,  // 路径参数：课程ID
-            @RequestParam String resourceId
-    ) {
-        Integer progress = videoPlayProgressService.getProgress(userId, courseId, resourceId);
-        return Result.success(progress);
-    }
+@GetMapping("/get/{courseId}")
+public Result<VideoProgressVO> getProgress(
+        @RequestHeader("userId") Long userId,
+        @PathVariable Long courseId,
+        @RequestParam String resourceId
+) {
+    VideoProgressVO progress = videoPlayProgressService.getProgress(userId, courseId, resourceId);
+    return Result.success(progress);
+}
 }
