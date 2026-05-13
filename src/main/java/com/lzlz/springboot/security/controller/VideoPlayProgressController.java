@@ -43,7 +43,7 @@ public Result<VideoProgressVO> getProgress(
         @RequestParam String resourceId
 ) {
             User currentUser = currentUserResolver.requireUser(user);
-    VideoProgressVO progress = videoPlayProgressService.getProgress((currentUser.getId(), courseId, resourceId);
+    VideoProgressVO progress = videoPlayProgressService.getProgress(currentUser.getId(), courseId, resourceId);
     return Result.success(progress);
 }
 }
