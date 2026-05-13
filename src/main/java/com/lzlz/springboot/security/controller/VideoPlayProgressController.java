@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.lzlz.springboot.security.entity.VideoProgressVO;
+import com.lzlz.springboot.security.service.CurrentUserResolver;
+import org.springframework.beans.factory.annotation.Autowired;
 
 
 @RestController
