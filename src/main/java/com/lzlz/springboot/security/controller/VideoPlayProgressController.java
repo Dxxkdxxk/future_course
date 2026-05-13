@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
+import com.lzlz.springboot.security.entity.VideoProgressVO;
+
 
 @RestController
 @RequestMapping("/api/video/progress")
