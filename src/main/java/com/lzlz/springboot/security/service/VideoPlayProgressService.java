@@ -7,5 +7,5 @@ public interface VideoPlayProgressService {
     void saveOrUpdateProgress(Long userId, Long courseId, SaveVideoProgressDTO dto);
 
     // 查询：增加 courseId
-    Integer getProgress(Long userId, Long courseId, String resourceId);
+    VideoProgressVO getProgress(Long userId, Long courseId, String resourceId);
 }
