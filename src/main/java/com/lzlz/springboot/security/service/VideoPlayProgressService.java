@@ -1,6 +1,7 @@
 package com.lzlz.springboot.security.service;
 
 import com.lzlz.springboot.security.dto.SaveVideoProgressDTO;
+import com.lzlz.springboot.security.entity.VideoProgressVO;
 
 public interface VideoPlayProgressService {
     // 保存/更新：增加 courseId
