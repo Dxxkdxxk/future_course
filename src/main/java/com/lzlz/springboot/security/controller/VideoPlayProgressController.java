@@ -32,7 +32,7 @@ public class VideoPlayProgressController {
             @Valid @RequestBody SaveVideoProgressDTO dto
     ) {
         User currentUser = currentUserResolver.requireUser(user);
-        videoPlayProgressService.saveOrUpdateProgress(currentUser.getId(), courseId, dto);
+        videoPlayProgressService.saveOrUpdateProgress(Long.valueOf(currentUser.getId()), courseId, dto);
         return Result.success();
     }
 
@@ -44,7 +44,7 @@ public Result<VideoProgressVO> getProgress(
         @RequestParam String resourceId
 ) {
             User currentUser = currentUserResolver.requireUser(user);
-    VideoProgressVO progress = videoPlayProgressService.getProgress(currentUser.getId(), courseId, resourceId);
+    VideoProgressVO progress = videoPlayProgressService.getProgress(Long.valueOf(currentUser.getId()), courseId, resourceId);
     return Result.success(progress);
 }
 }
