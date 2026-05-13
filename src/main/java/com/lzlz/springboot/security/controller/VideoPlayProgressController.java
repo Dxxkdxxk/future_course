@@ -16,24 +16,25 @@ public class VideoPlayProgressController {
     @Resource
     private VideoPlayProgressService videoPlayProgressService;
 
-    // 保存进度接口（适配前端JSON）
-    @PostMapping("/save")
+    // ====================== 保存进度：路径参数 courseId ======================
+    @PostMapping("/save/{courseId}")
     public Result<Void> saveProgress(
             @RequestHeader("userId") Long userId,
+            @PathVariable Long courseId,  // 路径参数：课程ID
             @Valid @RequestBody SaveVideoProgressDTO dto
     ) {
-        videoPlayProgressService.saveOrUpdateProgress(userId, dto);
+        videoPlayProgressService.saveOrUpdateProgress(userId, courseId, dto);
         return Result.success();
     }
 
-    // 查询进度接口（参数严格用 String）
-    @GetMapping("/get")
+    // ====================== 查询进度：路径参数 courseId ======================
+    @GetMapping("/get/{courseId}")
     public Result<Integer> getProgress(
             @RequestHeader("userId") Long userId,
-            // 这里必须是 String，对应前端 resourceId: res-123
+            @PathVariable Long courseId,  // 路径参数：课程ID
             @RequestParam String resourceId
     ) {
-        Integer progress = videoPlayProgressService.getProgress(userId, resourceId);
+        Integer progress = videoPlayProgressService.getProgress(userId, courseId, resourceId);
         return Result.success(progress);
     }
 }
