@@ -21,22 +21,24 @@ public class VideoPlayProgressController {
     // ====================== 保存进度：路径参数 courseId ======================
     @PostMapping("/save/{courseId}")
     public Result<Void> saveProgress(
-            @RequestHeader("userId") Long userId,
+            @AuthenticationPrincipal User user,
             @PathVariable Long courseId,  // 路径参数：课程ID
             @Valid @RequestBody SaveVideoProgressDTO dto
     ) {
-        videoPlayProgressService.saveOrUpdateProgress(userId, courseId, dto);
+        User currentUser = currentUserResolver.requireUser(user);
+        videoPlayProgressService.saveOrUpdateProgress(currentUser.getId(), courseId, dto);
         return Result.success();
     }
 
     // ====================== 查询进度：路径参数 courseId ======================
 @GetMapping("/get/{courseId}")
 public Result<VideoProgressVO> getProgress(
-        @RequestHeader("userId") Long userId,
+       @AuthenticationPrincipal User user,
         @PathVariable Long courseId,
         @RequestParam String resourceId
 ) {
-    VideoProgressVO progress = videoPlayProgressService.getProgress(userId, courseId, resourceId);
+            User currentUser = currentUserResolver.requireUser(user);
+    VideoProgressVO progress = videoPlayProgressService.getProgress((currentUser.getId(), courseId, resourceId);
     return Result.success(progress);
 }
 }
