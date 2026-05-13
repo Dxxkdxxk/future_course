@@ -3,6 +3,7 @@ package com.lzlz.springboot.security.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.lzlz.springboot.security.dto.SaveVideoProgressDTO;
 import com.lzlz.springboot.security.entity.VideoPlayProgress;
+import com.lzlz.springboot.security.entity.VideoProgressVO;
 import com.lzlz.springboot.security.mapper.VideoPlayProgressMapper;
 import com.lzlz.springboot.security.service.VideoPlayProgressService;
 import jakarta.annotation.Resource;
@@ -41,15 +42,19 @@ public class VideoPlayProgressServiceImpl implements VideoPlayProgressService {
         }
     }
 
-    @Override
-    public Integer getProgress(Long userId, Long courseId, String resourceId) {
-        // 【核心】三字段联合查询
-        LambdaQueryWrapper<VideoPlayProgress wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(VideoPlayProgress::getUserId, userId)
-               .eq(VideoPlayProgress::getCourseId, courseId)  // 新增
-               .eq(VideoPlayProgress::getVideoId, resourceId);
+@Override
+public VideoProgressVO getProgress(Long userId, Long courseId, String resourceId) {
+    LambdaQueryWrapper<VideoPlayProgress> wrapper = new LambdaQueryWrapper<>();
+    wrapper.eq(VideoPlayProgress::getUserId, userId)
+           .eq(VideoPlayProgress::getCourseId, courseId)
+           .eq(VideoPlayProgress::getVideoId, resourceId);
 
-        VideoPlayProgress progress = progressMapper.selectOne(wrapper);
-        return progress == null ? 0 : progress.getProgressSeconds();
+    VideoPlayProgress progress = progressMapper.selectOne(wrapper);
+    
+    if (progress == null) {
+        return new VideoProgressVO(0, 0.00);
     }
+    // 返回秒数 + 百分比
+    return new VideoProgressVO(progress.getProgressSeconds(), progress.getProgressPercentage());
+}
 }
