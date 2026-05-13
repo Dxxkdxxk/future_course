@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
 import javax.validation.Valid;
+import com.lzlz.springboot.security.entity.User;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import com.lzlz.springboot.security.entity.VideoProgressVO;
 import com.lzlz.springboot.security.service.CurrentUserResolver;
