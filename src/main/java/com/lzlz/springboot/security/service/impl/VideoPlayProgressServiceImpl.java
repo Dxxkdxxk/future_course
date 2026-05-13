@@ -15,40 +15,41 @@ public class VideoPlayProgressServiceImpl implements VideoPlayProgressService {
     @Resource
     private VideoPlayProgressMapper progressMapper;
 
-    /**
-     * 保存/更新进度：存在则更新，不存在则新增
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void saveOrUpdateProgress(Long userId, SaveVideoProgressDTO dto) {
-        LambdaQueryWrapper<VideoPlayProgress> wrapper = new LambdaQueryWrapper<>();
+    public void saveOrUpdateProgress(Long userId, Long courseId, SaveVideoProgressDTO dto) {
+        // 【核心】三字段联合查询：用户 + 课程 + 视频
+        LambdaQueryWrapper<VideoPlayProgress wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(VideoPlayProgress::getUserId, userId)
-                .eq(VideoPlayProgress::getVideoId, dto.getResourceId()); // 这里改了！
+               .eq(VideoPlayProgress::getCourseId, courseId)  // 新增
+               .eq(VideoPlayProgress::getVideoId, dto.getResourceId());
 
         VideoPlayProgress progress = progressMapper.selectOne(wrapper);
-
+        
         if (progress == null) {
+            // 新增：存储 courseId
             progress = new VideoPlayProgress();
             progress.setUserId(userId);
-            progress.setVideoId(dto.getResourceId());  // 改这里
-            progress.setProgressSeconds(dto.getWatchedSeconds()); // 改这里
+            progress.setCourseId(courseId); // 新增
+            progress.setVideoId(dto.getResourceId());
+            progress.setProgressSeconds(dto.getWatchedSeconds());
             progressMapper.insert(progress);
         } else {
-            progress.setProgressSeconds(dto.getWatchedSeconds()); // 改这里
+            // 更新进度
+            progress.setProgressSeconds(dto.getWatchedSeconds());
             progressMapper.updateById(progress);
         }
     }
 
-    /**
-     * 查询播放进度，无记录返回 0
-     */
-@Override
-public Integer getProgress(Long userId, String resourceId) {
-    LambdaQueryWrapper<VideoPlayProgress> wrapper = new LambdaQueryWrapper<>();
-    wrapper.eq(VideoPlayProgress::getUserId, userId)
-           .eq(VideoPlayProgress::getVideoId, resourceId);
+    @Override
+    public Integer getProgress(Long userId, Long courseId, String resourceId) {
+        // 【核心】三字段联合查询
+        LambdaQueryWrapper<VideoPlayProgress wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(VideoPlayProgress::getUserId, userId)
+               .eq(VideoPlayProgress::getCourseId, courseId)  // 新增
+               .eq(VideoPlayProgress::getVideoId, resourceId);
 
-    VideoPlayProgress progress = progressMapper.selectOne(wrapper);
-    return progress == null ? 0 : progress.getProgressSeconds();
-}
+        VideoPlayProgress progress = progressMapper.selectOne(wrapper);
+        return progress == null ? 0 : progress.getProgressSeconds();
+    }
 }
