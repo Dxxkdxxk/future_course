@@ -12,8 +12,9 @@ public class VideoPlayProgress {
     @TableId(type = IdType.AUTO)
     private Long id;
     private Long userId;          // 用户ID
-    private Long courseId;        // 【新增】课程ID
-    private String videoId;       // 视频ID（对应前端resourceId）
-    private Integer progressSeconds; // 播放进度
-    private LocalDateTime updateTime;
+    private Long courseId;        // 课程ID
+    private String videoId;       // 视频ID（resourceId）
+    private Integer progressSeconds; // 已观看秒数
+    private Double progressPercentage; // 【关键】进度百分比（加上这行！）
+    private LocalDateTime updateTime; // 更新时间
 }
