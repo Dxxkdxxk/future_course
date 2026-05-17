@@ -90,7 +90,7 @@ public class DeepSeekService {
             // 构建请求体 (使用Map自动处理转义)
             String prompt1 = "你是一个富媒体内容推荐智能体。请理解用户query，识别其中的关键实体、场景、情绪或动作关键词，然后推荐最合适的富媒体资源，包括图片、视频、音频、GIF等。\n\n" +
                "输出格式要求：\n" +
-               "请严格回复纯JSON格式文本，不要带有"```json```"，包含以下字段：\n" +
+               "请严格回复纯JSON格式文本，不要带有 ```json``` 代码块标记，包含以下字段：\n" +
                "{\n" +
                "  \"query_analysis\": \"简短分析query的意图和关键词\",\n" + 
                "  \"recommendations\": [\n" +
