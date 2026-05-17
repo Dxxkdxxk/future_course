@@ -1,5 +1,7 @@
 package com.lzlz.springboot.security.controller;
 
+import com.lzlz.springboot.security.dto.AiGradeSubmissionRequest;
+import com.lzlz.springboot.security.dto.AiGradeSubmissionResponse;
 import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.CreateHomeworkRequest;
 import com.lzlz.springboot.security.dto.GradeSubmissionRequest;
@@ -76,5 +78,15 @@ public class TeacherHomeworkController {
             @RequestBody GradeSubmissionRequest request) {
         submissionService.gradeSubmission(courseId, submissionId, request.getScore(), request.getComment());
         return ApiResponse.success(null);
+    }
+
+    @PostMapping("/submission/{submissionId}/ai-grade")
+    public ApiResponse<AiGradeSubmissionResponse> aiGradeSubmission(
+            @PathVariable Long courseId,
+            @PathVariable Long submissionId,
+            @RequestBody(required = false) AiGradeSubmissionRequest request) {
+        String extraInstruction = request == null ? null : request.getExtraInstruction();
+        AiGradeSubmissionResponse result = submissionService.aiGradeSubmission(courseId, submissionId, extraInstruction);
+        return ApiResponse.success(result);
     }
 }

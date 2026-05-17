@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 
 import org.apache.poi.xwpf.usermodel.*;   // docx
 import org.apache.pdfbox.pdmodel.PDDocument;
@@ -24,8 +25,15 @@ public class DeepSeekService {
     @Autowired
     private RestTemplate restTemplate;
 
-    private final String apiKey = "sk-29e6e19b34644fd3bd03acdb85c85ec3";
-    private final String url = "https://api.deepseek.com/v1/chat/completions";
+    @Value("${rag.deepseek.api-key}")
+    private String apiKey;
+    
+    @Value("${rag.deepseek.base-url}")
+    private String baseUrl;
+    
+    private String getUrl() {
+        return baseUrl + "/chat/completions";
+    }
 
 
     // 教材大纲
@@ -52,7 +60,7 @@ public class DeepSeekService {
             String requestJson = objectMapper.writeValueAsString(requestBody);
             HttpEntity<String> request = new HttpEntity<>(requestJson, headers);
             
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(getUrl(), request, String.class);
             
             // 7. 解析响应
             if (response.getStatusCode() == HttpStatus.OK) {
@@ -82,7 +90,7 @@ public class DeepSeekService {
             // 构建请求体 (使用Map自动处理转义)
             String prompt1 = "你是一个富媒体内容推荐智能体。请理解用户query，识别其中的关键实体、场景、情绪或动作关键词，然后推荐最合适的富媒体资源，包括图片、视频、音频、GIF等。\n\n" +
                "输出格式要求：\n" +
-               "请严格回复纯JSON格式文本，不要带有“```json```”，包含以下字段：\n" +
+               "请严格回复纯JSON格式文本，不要带有"```json```"，包含以下字段：\n" +
                "{\n" +
                "  \"query_analysis\": \"简短分析query的意图和关键词\",\n" + 
                "  \"recommendations\": [\n" +
@@ -116,7 +124,7 @@ public class DeepSeekService {
             String requestJson = objectMapper.writeValueAsString(requestBody);
             HttpEntity<String> request = new HttpEntity<>(requestJson, headers);
             
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(getUrl(), request, String.class);
             
             // 解析响应
             if (response.getStatusCode() == HttpStatus.OK) {
@@ -164,7 +172,7 @@ public class DeepSeekService {
             String requestJson = objectMapper.writeValueAsString(requestBody);
             HttpEntity<String> request = new HttpEntity<>(requestJson, headers);
             
-            ResponseEntity<String> response = restTemplate.postForEntity(url, request, String.class);
+            ResponseEntity<String> response = restTemplate.postForEntity(getUrl(), request, String.class);
             
             // 7. 解析响应
             if (response.getStatusCode() == HttpStatus.OK) {

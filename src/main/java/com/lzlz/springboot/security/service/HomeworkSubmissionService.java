@@ -1,5 +1,6 @@
 package com.lzlz.springboot.security.service;
 
+import com.lzlz.springboot.security.dto.AiGradeSubmissionResponse;
 import com.lzlz.springboot.security.dto.StudentSubmissionDto;
 import com.lzlz.springboot.security.entity.HomeworkSubmission;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +26,11 @@ public interface HomeworkSubmissionService {
 
     // 建议加上 courseId
     void gradeSubmission(Long courseId, Long submissionId, Integer finalScore, String teacherComment);
+
+    /**
+     * AI 批改建议：只返回建议结果，不直接保存成绩
+     */
+    AiGradeSubmissionResponse aiGradeSubmission(Long courseId, Long submissionId, String extraInstruction);
 
 
     /**

@@ -1,6 +1,7 @@
 package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.QuestionDto;
+import com.lzlz.springboot.security.entity.Question;
 import com.lzlz.springboot.security.service.QuestionService;
 import com.lzlz.springboot.security.service.RagDocumentService;
 import com.lzlz.springboot.security.service.RagService;
@@ -188,6 +189,44 @@ public class RagController {
         }
     }
 
+    @PostMapping("/{courseId}/question/aipaper")
+    public ResponseEntity<?> paperAIgenerate(
+            @PathVariable String courseId,
+            @RequestBody Map<String, Object> jsonData) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            String requirement = (String) jsonData.get("requirement");
+            List<Question> questions = questionService.getQuestions(Long.valueOf(courseId), new QuestionDto.QueryRequest());
+            String questionsJson = objectMapper.writeValueAsString(questions);
+            String aiResponse = ragService.generatePaperQuestionIds(requirement, courseId, questionsJson);
+
+            JsonNode root = objectMapper.readTree(stripJsonMarkdown(aiResponse));
+            JsonNode questionIds = root.isArray() ? root : null;
+            if (questionIds == null && root.isObject()) {
+                if (root.has("questions") && root.get("questions").isArray()) {
+                    questionIds = root.get("questions");
+                } else if (root.has("questionIds") && root.get("questionIds").isArray()) {
+                    questionIds = root.get("questionIds");
+                }
+            }
+            if (questionIds == null || !questionIds.isArray()) {
+                response.put("code", 400);
+                response.put("msg", "AI返回的不是有效的题目ID数组");
+                response.put("data", Map.of("response", aiResponse));
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            response.put("code", 200);
+            response.put("msg", "AI组卷成功");
+            response.put("data", Map.of("questions", questionIds));
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            response.put("code", 400);
+            response.put("msg", "AI组卷失败: " + e.getMessage());
+            return ResponseEntity.badRequest().body(response);
+        }
+    }
+
     @PostMapping("/{courseId}/question/aigenerate")
     public ResponseEntity<?> questionAIgenerate(
             @PathVariable String courseId,
@@ -334,6 +373,22 @@ public class RagController {
                 }
         );
         return emitter;
+    }
+
+    private String stripJsonMarkdown(String text) {
+        if (text == null) {
+            return "";
+        }
+        String trimmed = text.trim();
+        if (!trimmed.startsWith("```")) {
+            return trimmed;
+        }
+        int firstLineEnd = trimmed.indexOf('\n');
+        int lastFenceStart = trimmed.lastIndexOf("```");
+        if (firstLineEnd >= 0 && lastFenceStart > firstLineEnd) {
+            return trimmed.substring(firstLineEnd + 1, lastFenceStart).trim();
+        }
+        return trimmed;
     }
 
     private void sendSse(SseEmitter emitter, String event, Object data) {

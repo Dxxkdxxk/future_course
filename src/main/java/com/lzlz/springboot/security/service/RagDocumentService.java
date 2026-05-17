@@ -87,6 +87,25 @@ public class RagDocumentService {
         }
     }
 
+    public String extractPlainText(String filename, byte[] bytes) throws IOException {
+        String normalizedFilename = normalizeFilename(filename);
+        if (normalizedFilename == null || normalizedFilename.isBlank()) {
+            throw new IllegalArgumentException("文件名不能为空");
+        }
+        if (bytes == null || bytes.length == 0) {
+            throw new IllegalArgumentException("文件内容为空");
+        }
+        Path tempFile = Files.createTempFile("rag_extract_", "_" + normalizedFilename);
+        Files.write(tempFile, bytes);
+        try {
+            Document document = loadDocument(tempFile, normalizedFilename);
+            document = sanitizeDocument(document, normalizedFilename, "extract-only", null);
+            return document.text();
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
     /**
      * 上传文档并入库；向量片段 metadata 含 fileId、filename、courseId。
      */

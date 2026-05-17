@@ -67,6 +67,43 @@ public class RagService {
         return withRetrievalCourseId(courseId, () -> ragAssistant.markHomework(user));
     }
 
+    public String gradeHomeworkJson(String courseId, String homeworkTitle, String homeworkContent,
+                                    Integer totalScore, String studentContent, String extraInstruction) {
+        String content = studentContent == null ? "" : studentContent;
+        String excerpt = content.length() > 800 ? content.substring(0, 800) + "…" : content;
+        String user = """
+                课程 ID：%s
+
+                作业标题：
+                %s
+
+                作业要求：
+                %s
+
+                作业总分：%s
+
+                教师补充批改要求：
+                %s
+
+                【供向量检索摘要】请据此从知识库匹配与本作业相关的讲义、习题与评分要点：
+                %s
+
+                学生提交内容：
+                ---
+                %s
+                ---
+                """.formatted(
+                courseId == null ? "" : courseId,
+                homeworkTitle == null ? "" : homeworkTitle,
+                homeworkContent == null ? "" : homeworkContent,
+                totalScore == null ? 100 : totalScore,
+                extraInstruction == null ? "" : extraInstruction,
+                excerpt,
+                content
+        );
+        return withRetrievalCourseId(courseId, () -> ragAssistant.gradeHomeworkJson(user));
+    }
+
     public String markExperiment(MultipartFile file, String courseId) throws Exception {
         String content = documentService.extractPlainText(file);
         String excerpt = content.length() > 800 ? content.substring(0, 800) + "…" : content;
@@ -96,6 +133,29 @@ public class RagService {
                 %s
                 """.formatted(courseId == null ? "" : courseId, q);
         return withRetrievalCourseId(courseId, () -> ragAssistant.generateQuestions(user));
+    }
+
+    public String generatePaperQuestionIds(String requirement, String courseId, String questionsJson) {
+        String system = """
+                你是智能组卷助手。请根据组卷要求，从给定题库中选择合适题目。
+                只能选择题库中已经存在的题目 id，不得编造 id。
+                只返回 JSON 字符串数组，例如：[\"id1\",\"id2\"]。
+                不要返回 markdown，不要解释，不要返回其他字段。
+                """;
+        String user = """
+                课程 ID：%s
+
+                组卷要求：
+                %s
+
+                题库题目列表 JSON：
+                %s
+                """.formatted(
+                courseId == null ? "" : courseId,
+                requirement == null ? "" : requirement,
+                questionsJson == null ? "[]" : questionsJson
+        );
+        return chat(system, user);
     }
 
     public String outlineFromDocument(MultipartFile file, String courseId, String textbookId) throws Exception {
@@ -130,12 +190,12 @@ public class RagService {
 
     private String difficultKnowledgePrompt(String query) {
         return """
-                重难点主题如下：
+                原始query如下：
                 ---
                 %s
                 ---
 
-                请结合知识库中相关内容，列出与该主题密切相关的重难点、易错点以及建议补充学习的知识点；若知识库无直接依据，请明确说明并给出通用学习建议。
+                请结合知识库中相关内容，对该query进行回复。如果与知识点相关，列出与该主题密切相关的重难点、易错点以及建议补充学习的知识点；若知识库无直接依据，请明确说明并给出通用学习建议。
                 """.formatted(query == null ? "" : query);
     }
 
