@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -52,6 +53,20 @@ public class StudentGraphController {
         User currentUser = currentUserResolver.requireUser(user);
         studentCourseAccessService.checkGraphAccess(currentUser.getId(), courseId, graphId);
         GraphBuildResponse response = graphBuildService.getGraphDetails(graphId);
+        response = graphLearningProgressService.fillStudentProgress(courseId, graphId, currentUser.getId(), response);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{graphId}/partial")
+    public ResponseEntity<ApiResponse<GraphBuildResponse>> getGraphPartial(
+            @PathVariable long courseId,
+            @PathVariable long graphId,
+            @RequestParam(required = false) String parentNodeId,
+            @RequestParam(defaultValue = "1") int depth,
+            @AuthenticationPrincipal User user) {
+        User currentUser = currentUserResolver.requireUser(user);
+        studentCourseAccessService.checkGraphAccess(currentUser.getId(), courseId, graphId);
+        GraphBuildResponse response = graphBuildService.getGraphPartial(graphId, parentNodeId, depth);
         response = graphLearningProgressService.fillStudentProgress(courseId, graphId, currentUser.getId(), response);
         return ResponseEntity.ok(ApiResponse.success(response));
     }

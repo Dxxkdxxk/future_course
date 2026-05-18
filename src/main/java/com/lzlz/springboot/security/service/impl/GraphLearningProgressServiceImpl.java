@@ -72,6 +72,52 @@ public class GraphLearningProgressServiceImpl implements GraphLearningProgressSe
     }
 
     @Override
+    public GraphBuildResponse fillClassAverageProgress(Long courseId, Long graphId, GraphBuildResponse response) {
+        if (response == null || response.getNodes() == null || response.getNodes().isEmpty()) {
+            return response;
+        }
+        Course course = courseMapper.selectById(courseId);
+        if (course == null || course.getClassId() == null) {
+            return response;
+        }
+        QueryWrapper<ClassStudent> wrapper = new QueryWrapper<>();
+        wrapper.eq("class_id", course.getClassId());
+        List<ClassStudent> students = classStudentMapper.selectList(wrapper);
+        if (students == null || students.isEmpty()) {
+            return response;
+        }
+
+        for (GraphNode node : response.getNodes()) {
+            double videoSum = 0.0d;
+            double examSum = 0.0d;
+            double homeworkSum = 0.0d;
+            double overallSum = 0.0d;
+            int count = 0;
+            for (ClassStudent student : students) {
+                if (student.getUserId() == null) {
+                    continue;
+                }
+                GraphNodeProgress p = buildNodeProgress(courseId, graphId, node.getNodeId(), student.getUserId());
+                videoSum += p.getVideoProgress() == null ? 0.0d : p.getVideoProgress();
+                examSum += p.getExamProgress() == null ? 0.0d : p.getExamProgress();
+                homeworkSum += p.getHomeworkProgress() == null ? 0.0d : p.getHomeworkProgress();
+                overallSum += p.getOverallProgress() == null ? 0.0d : p.getOverallProgress();
+                count++;
+            }
+            double divisor = count <= 0 ? 1.0d : count;
+            node.setProgress(GraphNodeProgress.builder()
+                    .videoProgress(round2(videoSum / divisor))
+                    .examProgress(round2(examSum / divisor))
+                    .homeworkProgress(round2(homeworkSum / divisor))
+                    .overallProgress(round2(overallSum / divisor))
+                    .updatedAt(LocalDateTime.now())
+                    .build());
+            node.setBindingSummary(buildBindingSummary(courseId, graphId, node.getNodeId()));
+        }
+        return response;
+    }
+
+    @Override
     public VideoProgressDto.ReportResponse reportVideoProgress(Long courseId, Long graphId, String nodeId, Integer studentId, VideoProgressDto.ReportRequest request) {
         if (request.getResourceId() == null || request.getResourceId().isBlank()) {
             throw new CustomGraphException(400, "resourceId is required");

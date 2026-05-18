@@ -367,6 +367,37 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         return response;
     }
 
+    @Override
+    public GraphBuildResponse getGraphPartial(long graphId, String parentNodeId, int depth) {
+        int effectiveDepth = depth <= 0 ? 1 : depth;
+        Map<String, List<Map<String, Object>>> components =
+                graphRepository.getGraphComponentsPartial(graphId, parentNodeId, effectiveDepth);
+
+        List<GraphNode> nodes = components.getOrDefault("nodes", Collections.emptyList()).stream()
+                .map(map -> GraphNode.builder()
+                        .nodeId((String) map.get("nodeId"))
+                        .name((String) map.get("name"))
+                        .description((String) map.get("description"))
+                        .label((String) map.get("label"))
+                        .build())
+                .collect(Collectors.toList());
+
+        List<GraphEdge> edges = components.getOrDefault("edges", Collections.emptyList()).stream()
+                .map(map -> GraphEdge.builder()
+                        .edgeId((String) map.get("edgeId"))
+                        .sourceNodeId((String) map.get("sourceNodeId"))
+                        .targetNodeId((String) map.get("targetNodeId"))
+                        .relationType((String) map.get("relationType"))
+                        .build())
+                .collect(Collectors.toList());
+
+        return GraphBuildResponse.builder()
+                .graphId(graphId)
+                .nodes(nodes)
+                .edges(edges)
+                .build();
+    }
+
 
     @Override
     public List<GraphInfoResponse> getGraphsByCourse(long courseId)

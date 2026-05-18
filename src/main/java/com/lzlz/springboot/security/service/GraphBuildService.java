@@ -12,6 +12,8 @@ public interface GraphBuildService {
 
     GraphBuildResponse getGraphDetails(long graphId);
 
+    GraphBuildResponse getGraphPartial(long graphId, String parentNodeId, int depth);
+
     // (!!!)
     // (!!!) 这是您需要添加的新方法 (!!!)
     // (!!!)

@@ -7,6 +7,8 @@ import com.lzlz.springboot.security.dto.VideoProgressDto;
 public interface GraphLearningProgressService {
     GraphBuildResponse fillStudentProgress(Long courseId, Long graphId, Integer studentId, GraphBuildResponse response);
 
+    GraphBuildResponse fillClassAverageProgress(Long courseId, Long graphId, GraphBuildResponse response);
+
     VideoProgressDto.ReportResponse reportVideoProgress(Long courseId, Long graphId, String nodeId, Integer studentId, VideoProgressDto.ReportRequest request);
 
     void bindNodeTask(Long courseId, Long graphId, String nodeId, NodeBindingDto.UpsertRequest request);

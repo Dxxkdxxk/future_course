@@ -128,6 +128,50 @@ public class GraphRepository {
         }
     }
 
+    public Map<String, List<Map<String, Object>>> getGraphComponentsPartial(long graphId, String parentNodeId, int depth) {
+        int effectiveDepth = Math.max(1, depth);
+        try (Session session = neo4jDriver.session()) {
+            List<Map<String, Object>> nodes = session.executeRead(tx -> {
+                String query;
+                Map<String, Object> params;
+                if (parentNodeId == null || parentNodeId.isBlank()) {
+                    query = "MATCH (n:KnowledgeNode {graphId: $graphId}) "
+                            + "WHERE NOT (:KnowledgeNode {graphId: $graphId})-[:contains]->(n) "
+                            + "RETURN n.nodeId AS nodeId, n.name AS name, n.description AS description, "
+                            + "[lbl IN labels(n) WHERE lbl <> 'KnowledgeNode'][0] AS label";
+                    params = Map.of("graphId", graphId);
+                } else {
+                    query = "MATCH (p:KnowledgeNode {graphId: $graphId, nodeId: $parentNodeId}) "
+                            + "MATCH path=(p)-[:contains*1.." + effectiveDepth + "]->(n:KnowledgeNode {graphId: $graphId}) "
+                            + "RETURN DISTINCT n.nodeId AS nodeId, n.name AS name, n.description AS description, "
+                            + "[lbl IN labels(n) WHERE lbl <> 'KnowledgeNode'][0] AS label";
+                    params = Map.of("graphId", graphId, "parentNodeId", parentNodeId);
+                }
+                return tx.run(query, params).list(Record::asMap);
+            });
+
+            Set<String> nodeIds = nodes.stream()
+                    .map(row -> Objects.toString(row.get("nodeId"), null))
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+
+            if (nodeIds.isEmpty()) {
+                return Map.of("nodes", nodes, "edges", Collections.emptyList());
+            }
+
+            List<Map<String, Object>> edges = session.executeRead(tx -> {
+                String query = "MATCH (s:KnowledgeNode {graphId: $graphId})-[r]->(t:KnowledgeNode {graphId: $graphId}) "
+                        + "WHERE s.nodeId IN $nodeIds AND t.nodeId IN $nodeIds "
+                        + "RETURN coalesce(r.edgeId, toString(id(r))) AS edgeId, "
+                        + "s.nodeId AS sourceNodeId, t.nodeId AS targetNodeId, type(r) AS relationType";
+                return tx.run(query, Map.of("graphId", graphId, "nodeIds", new ArrayList<>(nodeIds)))
+                        .list(Record::asMap);
+            });
+
+            return Map.of("nodes", nodes, "edges", edges);
+        }
+    }
+
 
     /**
      * 在 Neo4j 中创建单个节点，并可选地将其连接到父节点

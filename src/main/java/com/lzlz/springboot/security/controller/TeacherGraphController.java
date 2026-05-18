@@ -2,6 +2,7 @@ package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.*;
 import com.lzlz.springboot.security.service.GraphBuildService;
+import com.lzlz.springboot.security.service.GraphLearningProgressService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,9 @@ public class TeacherGraphController {
 
     @Autowired
     private GraphBuildService graphBuildService;
+
+    @Autowired
+    private GraphLearningProgressService graphLearningProgressService;
 
     // (!!!)
     // (!!!) 这是您需要的新接口 (Step 1: 发现) (!!!)
@@ -56,6 +60,18 @@ public class TeacherGraphController {
             @PathVariable long graphId) {
 
         GraphBuildResponse response = graphBuildService.getGraphDetails(graphId);
+        response = graphLearningProgressService.fillClassAverageProgress(courseId, graphId, response);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{graphId}/partial")
+    public ResponseEntity<ApiResponse<GraphBuildResponse>> getGraphPartial(
+            @PathVariable long courseId,
+            @PathVariable long graphId,
+            @RequestParam(required = false) String parentNodeId,
+            @RequestParam(defaultValue = "1") int depth) {
+        GraphBuildResponse response = graphBuildService.getGraphPartial(graphId, parentNodeId, depth);
+        response = graphLearningProgressService.fillClassAverageProgress(courseId, graphId, response);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
