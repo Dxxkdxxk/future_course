@@ -5,6 +5,7 @@ import com.lzlz.springboot.security.dto.GraphBuildResponse;
 import com.lzlz.springboot.security.dto.GraphNode;
 import com.lzlz.springboot.security.dto.GraphNodeBindingSummary;
 import com.lzlz.springboot.security.dto.GraphNodeProgress;
+import com.lzlz.springboot.security.dto.GraphWeightConfigDto;
 import com.lzlz.springboot.security.dto.NodeBindingDto;
 import com.lzlz.springboot.security.dto.VideoProgressDto;
 import com.lzlz.springboot.security.entity.Homework;
@@ -13,11 +14,13 @@ import com.lzlz.springboot.security.entity.StudentPaperRecord;
 import com.lzlz.springboot.security.entity.TestTask;
 import com.lzlz.springboot.security.entity.Course;
 import com.lzlz.springboot.security.entity.ClassStudent;
+import com.lzlz.springboot.security.entity.GraphProgressWeightConfig;
 import com.lzlz.springboot.security.exception.CustomGraphException;
 import com.lzlz.springboot.security.mapper.ClassStudentMapper;
 import com.lzlz.springboot.security.mapper.CourseMapper;
 import com.lzlz.springboot.security.mapper.HomeworkMapper;
 import com.lzlz.springboot.security.mapper.HomeworkSubmissionMapper;
+import com.lzlz.springboot.security.mapper.GraphProgressWeightConfigMapper;
 import com.lzlz.springboot.security.mapper.StudentPaperRecordMapper;
 import com.lzlz.springboot.security.mapper.TestTaskMapper;
 import com.lzlz.springboot.security.repository.GraphRepository;
@@ -41,6 +44,7 @@ public class GraphLearningProgressServiceImpl implements GraphLearningProgressSe
     private final HomeworkSubmissionMapper homeworkSubmissionMapper;
     private final CourseMapper courseMapper;
     private final ClassStudentMapper classStudentMapper;
+    private final GraphProgressWeightConfigMapper graphProgressWeightConfigMapper;
 
     public GraphLearningProgressServiceImpl(GraphRepository graphRepository,
                                             TestTaskMapper testTaskMapper,
@@ -48,7 +52,8 @@ public class GraphLearningProgressServiceImpl implements GraphLearningProgressSe
                                             HomeworkMapper homeworkMapper,
                                             HomeworkSubmissionMapper homeworkSubmissionMapper,
                                             CourseMapper courseMapper,
-                                            ClassStudentMapper classStudentMapper) {
+                                            ClassStudentMapper classStudentMapper,
+                                            GraphProgressWeightConfigMapper graphProgressWeightConfigMapper) {
         this.graphRepository = graphRepository;
         this.testTaskMapper = testTaskMapper;
         this.studentPaperRecordMapper = studentPaperRecordMapper;
@@ -56,6 +61,7 @@ public class GraphLearningProgressServiceImpl implements GraphLearningProgressSe
         this.homeworkSubmissionMapper = homeworkSubmissionMapper;
         this.courseMapper = courseMapper;
         this.classStudentMapper = classStudentMapper;
+        this.graphProgressWeightConfigMapper = graphProgressWeightConfigMapper;
     }
 
     @Override
@@ -115,6 +121,51 @@ public class GraphLearningProgressServiceImpl implements GraphLearningProgressSe
             node.setBindingSummary(buildBindingSummary(courseId, graphId, node.getNodeId()));
         }
         return response;
+    }
+
+    @Override
+    public GraphWeightConfigDto.WeightConfigResponse getWeightConfig(Long courseId, Long graphId) {
+        GraphProgressWeightConfig config = getOrInitWeightConfig(courseId, graphId);
+        return toWeightConfigResponse(config);
+    }
+
+    @Override
+    public GraphWeightConfigDto.WeightConfigResponse upsertWeightConfig(Long courseId, Long graphId, Long teacherId, GraphWeightConfigDto.UpsertRequest request) {
+        if (request == null) {
+            throw new CustomGraphException(400, "request is required");
+        }
+        double video = request.getVideoGlobal() == null ? 0.0d : request.getVideoGlobal();
+        double homework = request.getHomeworkGlobal() == null ? 0.0d : request.getHomeworkGlobal();
+        double exam = request.getExamGlobal() == null ? 0.0d : request.getExamGlobal();
+        validateWeightConfig(video, homework, exam);
+        String mode = request.getMode() == null || request.getMode().isBlank()
+                ? "ADAPTIVE" : request.getMode().trim().toUpperCase(Locale.ROOT);
+        if (!"ADAPTIVE".equals(mode)) {
+            throw new CustomGraphException(400, "mode must be ADAPTIVE");
+        }
+
+        QueryWrapper<GraphProgressWeightConfig> wrapper = new QueryWrapper<>();
+        wrapper.eq("course_id", courseId).eq("graph_id", graphId).last("LIMIT 1");
+        GraphProgressWeightConfig config = graphProgressWeightConfigMapper.selectOne(wrapper);
+        if (config == null) {
+            config = new GraphProgressWeightConfig();
+            config.setCourseId(courseId);
+            config.setGraphId(graphId);
+            config.setMode(mode);
+            config.setVideoGlobal(video);
+            config.setHomeworkGlobal(homework);
+            config.setExamGlobal(exam);
+            config.setUpdatedBy(teacherId);
+            graphProgressWeightConfigMapper.insert(config);
+        } else {
+            config.setMode(mode);
+            config.setVideoGlobal(video);
+            config.setHomeworkGlobal(homework);
+            config.setExamGlobal(exam);
+            config.setUpdatedBy(teacherId);
+            graphProgressWeightConfigMapper.updateById(config);
+        }
+        return toWeightConfigResponse(config);
     }
 
     @Override
@@ -215,7 +266,16 @@ public class GraphLearningProgressServiceImpl implements GraphLearningProgressSe
         double video = graphRepository.calculateNodeVideoProgress(graphId, nodeId, courseId, studentId);
         double exam = calculateExamProgress(courseId, graphId, nodeId, studentId);
         double homework = calculateHomeworkProgress(courseId, graphId, nodeId, studentId);
-        double overall = round2(video * 0.4d + exam * 0.3d + homework * 0.3d);
+        GraphProgressWeightConfig config = getOrInitWeightConfig(courseId, graphId);
+        BucketWeight bucketWeight = calcAdaptiveWeight(
+                config.getVideoGlobal(),
+                config.getHomeworkGlobal(),
+                config.getExamGlobal(),
+                graphRepository.countNodeVideos(graphId, nodeId) > 0,
+                !graphRepository.listNodeBindingsByType(graphId, nodeId, courseId, "HOMEWORK").isEmpty(),
+                !graphRepository.listNodeBindingsByType(graphId, nodeId, courseId, "EXAM").isEmpty()
+        );
+        double overall = round2(video * bucketWeight.video + homework * bucketWeight.homework + exam * bucketWeight.exam);
         GraphNodeProgress progress = GraphNodeProgress.builder()
                 .videoProgress(round2(video))
                 .examProgress(round2(exam))
@@ -269,6 +329,62 @@ public class GraphLearningProgressServiceImpl implements GraphLearningProgressSe
                 .examCount(examCount)
                 .homeworkCount(homeworkCount)
                 .build();
+    }
+
+    private GraphProgressWeightConfig getOrInitWeightConfig(Long courseId, Long graphId) {
+        QueryWrapper<GraphProgressWeightConfig> wrapper = new QueryWrapper<>();
+        wrapper.eq("course_id", courseId).eq("graph_id", graphId).last("LIMIT 1");
+        GraphProgressWeightConfig config = graphProgressWeightConfigMapper.selectOne(wrapper);
+        if (config != null) {
+            return config;
+        }
+        GraphProgressWeightConfig created = new GraphProgressWeightConfig();
+        created.setCourseId(courseId);
+        created.setGraphId(graphId);
+        created.setMode("ADAPTIVE");
+        created.setVideoGlobal(40.0d);
+        created.setHomeworkGlobal(30.0d);
+        created.setExamGlobal(30.0d);
+        graphProgressWeightConfigMapper.insert(created);
+        return created;
+    }
+
+    private GraphWeightConfigDto.WeightConfigResponse toWeightConfigResponse(GraphProgressWeightConfig config) {
+        GraphWeightConfigDto.WeightConfigResponse response = new GraphWeightConfigDto.WeightConfigResponse();
+        response.setCourseId(config.getCourseId());
+        response.setGraphId(config.getGraphId());
+        response.setMode(config.getMode());
+        response.setVideoGlobal(config.getVideoGlobal());
+        response.setHomeworkGlobal(config.getHomeworkGlobal());
+        response.setExamGlobal(config.getExamGlobal());
+        response.setUpdatedBy(config.getUpdatedBy());
+        response.setUpdatedAt(config.getUpdatedAt() == null ? null : config.getUpdatedAt().toString());
+        return response;
+    }
+
+    private void validateWeightConfig(double video, double homework, double exam) {
+        if (video < 0 || homework < 0 || exam < 0) {
+            throw new CustomGraphException(400, "weights must be >= 0");
+        }
+        double sum = round2(video + homework + exam);
+        if (Math.abs(sum - 100.0d) > 0.01d) {
+            throw new CustomGraphException(400, "videoGlobal + homeworkGlobal + examGlobal must equal 100");
+        }
+    }
+
+    private BucketWeight calcAdaptiveWeight(double videoGlobal, double homeworkGlobal, double examGlobal,
+                                            boolean videoConfigured, boolean homeworkConfigured, boolean examConfigured) {
+        double v = videoConfigured ? Math.max(0.0d, videoGlobal) : 0.0d;
+        double h = homeworkConfigured ? Math.max(0.0d, homeworkGlobal) : 0.0d;
+        double e = examConfigured ? Math.max(0.0d, examGlobal) : 0.0d;
+        double sum = v + h + e;
+        if (sum <= 0.0d) {
+            return new BucketWeight(0.0d, 0.0d, 0.0d);
+        }
+        return new BucketWeight(v / sum, h / sum, e / sum);
+    }
+
+    private record BucketWeight(double video, double homework, double exam) {
     }
 
     private double calculateExamProgress(Long courseId, Long graphId, String nodeId, Integer studentId) {

@@ -1,11 +1,14 @@
 package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.*;
+import com.lzlz.springboot.security.entity.User;
+import com.lzlz.springboot.security.service.CurrentUserResolver;
 import com.lzlz.springboot.security.service.GraphBuildService;
 import com.lzlz.springboot.security.service.GraphLearningProgressService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,6 +24,9 @@ public class TeacherGraphController {
 
     @Autowired
     private GraphLearningProgressService graphLearningProgressService;
+
+    @Autowired
+    private CurrentUserResolver currentUserResolver;
 
     // (!!!)
     // (!!!) 这是您需要的新接口 (Step 1: 发现) (!!!)
@@ -72,6 +78,26 @@ public class TeacherGraphController {
             @RequestParam(defaultValue = "1") int depth) {
         GraphBuildResponse response = graphBuildService.getGraphPartial(graphId, parentNodeId, depth);
         response = graphLearningProgressService.fillClassAverageProgress(courseId, graphId, response);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @GetMapping("/{graphId}/weight-config")
+    public ResponseEntity<ApiResponse<GraphWeightConfigDto.WeightConfigResponse>> getWeightConfig(
+            @PathVariable long courseId,
+            @PathVariable long graphId) {
+        GraphWeightConfigDto.WeightConfigResponse response = graphLearningProgressService.getWeightConfig(courseId, graphId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PutMapping("/{graphId}/weight-config")
+    public ResponseEntity<ApiResponse<GraphWeightConfigDto.WeightConfigResponse>> upsertWeightConfig(
+            @PathVariable long courseId,
+            @PathVariable long graphId,
+            @RequestBody GraphWeightConfigDto.UpsertRequest request,
+            @AuthenticationPrincipal User user) {
+        User currentUser = currentUserResolver.requireUser(user);
+        GraphWeightConfigDto.WeightConfigResponse response =
+                graphLearningProgressService.upsertWeightConfig(courseId, graphId, currentUser.getId().longValue(), request);
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 

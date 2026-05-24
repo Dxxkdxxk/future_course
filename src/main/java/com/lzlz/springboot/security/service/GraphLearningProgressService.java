@@ -1,6 +1,7 @@
 package com.lzlz.springboot.security.service;
 
 import com.lzlz.springboot.security.dto.GraphBuildResponse;
+import com.lzlz.springboot.security.dto.GraphWeightConfigDto;
 import com.lzlz.springboot.security.dto.NodeBindingDto;
 import com.lzlz.springboot.security.dto.VideoProgressDto;
 
@@ -8,6 +9,10 @@ public interface GraphLearningProgressService {
     GraphBuildResponse fillStudentProgress(Long courseId, Long graphId, Integer studentId, GraphBuildResponse response);
 
     GraphBuildResponse fillClassAverageProgress(Long courseId, Long graphId, GraphBuildResponse response);
+
+    GraphWeightConfigDto.WeightConfigResponse getWeightConfig(Long courseId, Long graphId);
+
+    GraphWeightConfigDto.WeightConfigResponse upsertWeightConfig(Long courseId, Long graphId, Long teacherId, GraphWeightConfigDto.UpsertRequest request);
 
     VideoProgressDto.ReportResponse reportVideoProgress(Long courseId, Long graphId, String nodeId, Integer studentId, VideoProgressDto.ReportRequest request);
 
