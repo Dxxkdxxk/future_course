@@ -1000,6 +1000,24 @@ public class GraphRepository {
                 .build();
     }
 
+        public double getStudentResourceProgress(long graphId, String nodeId, long courseId, int studentId, String resourceId) {
+        String query = "MATCH (:Student {studentId: $studentId})-[wr:WATCHED_RESOURCE "
+                + "{courseId: $courseId, graphId: $graphId, nodeId: $nodeId, resourceId: $resourceId}]->(:Resource) "
+                + "RETURN coalesce(wr.progressRate, 0.0) AS progressRate LIMIT 1";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> {
+                Result result = tx.run(query, Map.of(
+                        "studentId", studentId,
+                        "courseId", courseId,
+                        "graphId", graphId,
+                        "nodeId", nodeId,
+                        "resourceId", resourceId
+                ));
+                return result.hasNext() ? result.single().get("progressRate").asDouble(0.0d) : 0.0d;
+            });
+        }
+    }
+
     private double toDouble(Object value) {
         if (value == null) {
             return 0.0d;
