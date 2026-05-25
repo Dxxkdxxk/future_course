@@ -1,6 +1,7 @@
 package com.lzlz.springboot.security.service;
 
 import com.lzlz.springboot.security.dto.GraphBuildResponse;
+import com.lzlz.springboot.security.dto.GraphNodeProgress;
 import com.lzlz.springboot.security.dto.GraphWeightConfigDto;
 import com.lzlz.springboot.security.dto.NodeBindingDto;
 import com.lzlz.springboot.security.dto.VideoProgressDto;
