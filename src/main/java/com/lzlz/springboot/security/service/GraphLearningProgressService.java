@@ -1,6 +1,7 @@
 package com.lzlz.springboot.security.service;
 
 import com.lzlz.springboot.security.dto.GraphBuildResponse;
+import com.lzlz.springboot.security.dto.GraphNodeProgress;
 import com.lzlz.springboot.security.dto.GraphWeightConfigDto;
 import com.lzlz.springboot.security.dto.NodeBindingDto;
 import com.lzlz.springboot.security.dto.VideoProgressDto;
@@ -27,4 +28,6 @@ public interface GraphLearningProgressService {
     void recalculateStudentByExamTask(Long courseId, Long taskId, Integer studentId);
 
     void recalculateAllStudentsForNode(Long courseId, Long graphId, String nodeId);
+
+    GraphNodeProgress recalculateNodeProgress(Long courseId, Long graphId, String nodeId, Integer studentId);
 }
