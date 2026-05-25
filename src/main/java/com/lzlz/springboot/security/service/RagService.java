@@ -136,23 +136,38 @@ public class RagService {
     }
 
     public String generatePaperQuestionIds(String requirement, String courseId, String questionsJson) {
+        return generatePaperQuestionIds(requirement, courseId, questionsJson, "[]");
+    }
+
+    public String generatePaperQuestionIds(String requirement, String courseId, String questionsJson, String previousQuestionsJson) {
         String system = """
-                你是智能组卷助手。请根据组卷要求，从给定题库中选择合适题目。
-                只能选择题库中已经存在的题目 id，不得编造 id。
-                只返回 JSON 字符串数组，例如：[\"id1\",\"id2\"]。
-                不要返回 markdown，不要解释，不要返回其他字段。
+                你是智能组卷助手。请根据教师本轮要求，从给定题库中选择合适题目。
+                规则：
+                1. 只能选择当前题库中已经存在的题目 id，不得编造 id。
+                2. 如果提供了上一版试卷题目 ID 列表，请在上一版基础上修改。
+                3. 上一版试卷题目 ID 列表表示上一轮生成的完整试卷及题目顺序。
+                4. 当前完整题库 JSON 中包含每个题目的 id、题干、类型、知识点、难度、分值等信息。
+                5. 你需要结合上一版 ID 列表，在当前完整题库中找到对应题目信息，再根据本轮教师要求决定保留、删除、替换或新增哪些题。
+                6. 返回修改后的完整试卷题目 ID 数组，而不是只返回新增或删除的题。
+                7. 如果没有提供上一版试卷题目 ID 列表，或列表为空，则按本轮要求从零组卷。
+                8. 只返回 JSON 字符串数组，例如：[\"id1\",\"id2\"]。
+                9. 不要返回 markdown，不要解释，不要返回其他字段。
                 """;
         String user = """
                 课程 ID：%s
 
-                组卷要求：
+                本轮教师要求：
                 %s
 
-                题库题目列表 JSON：
+                上一版试卷题目 ID 列表：
+                %s
+
+                当前课程完整题库 JSON：
                 %s
                 """.formatted(
                 courseId == null ? "" : courseId,
                 requirement == null ? "" : requirement,
+                previousQuestionsJson == null ? "[]" : previousQuestionsJson,
                 questionsJson == null ? "[]" : questionsJson
         );
         return chat(system, user);

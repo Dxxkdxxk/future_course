@@ -10,8 +10,7 @@ import dev.langchain4j.service.UserMessage;
 public interface RagAssistant {
 
     @SystemMessage("""
-            你是一个专业的知识库助手，请严格基于提供的上下文内容回答用户问题。
-            如果上下文中没有相关信息，请直接回答"我在知识库中未找到相关信息"，不要编造答案。
+            你是一个专业的知识库助手，请优先基于提供的上下文内容回答用户问题，如无上下文则正常回答即可。
             回答请简洁、准确，使用中文。
             """)
     String chat(@UserMessage String question);

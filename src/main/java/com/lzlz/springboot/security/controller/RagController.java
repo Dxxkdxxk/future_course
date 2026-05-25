@@ -16,10 +16,12 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping({"/api/v1/course"})
@@ -30,6 +32,7 @@ public class RagController {
     private final RagService ragService;
     private final QuestionService questionService;
     private final ObjectMapper objectMapper;
+    private final Map<String, List<String>> paperQuestionMemory = new ConcurrentHashMap<>();
 
     /**
      * 上传文档入库（向量 metadata 带 courseId，检索仅在同课程文档内匹配）
@@ -196,9 +199,18 @@ public class RagController {
         Map<String, Object> response = new HashMap<>();
         try {
             String requirement = (String) jsonData.get("requirement");
+            String memoryKey = courseId.trim();
+            boolean resetMemory = shouldResetPaperMemory(jsonData);
+            if (resetMemory) {
+                paperQuestionMemory.remove(memoryKey);
+            }
+            List<String> previousQuestions = resetMemory
+                    ? List.of()
+                    : paperQuestionMemory.getOrDefault(memoryKey, List.of());
+            String previousQuestionsJson = objectMapper.writeValueAsString(previousQuestions);
             List<Question> questions = questionService.getQuestions(Long.valueOf(courseId), new QuestionDto.QueryRequest());
             String questionsJson = objectMapper.writeValueAsString(questions);
-            String aiResponse = ragService.generatePaperQuestionIds(requirement, courseId, questionsJson);
+            String aiResponse = ragService.generatePaperQuestionIds(requirement, courseId, questionsJson, previousQuestionsJson);
 
             JsonNode root = objectMapper.readTree(stripJsonMarkdown(aiResponse));
             JsonNode questionIds = root.isArray() ? root : null;
@@ -218,6 +230,8 @@ public class RagController {
 
             response.put("code", 200);
             response.put("msg", "AI组卷成功");
+            List<String> generatedQuestionIds = extractQuestionIds(questionIds);
+            paperQuestionMemory.put(memoryKey, generatedQuestionIds);
             response.put("data", Map.of("questions", questionIds));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -389,6 +403,25 @@ public class RagController {
             return trimmed.substring(firstLineEnd + 1, lastFenceStart).trim();
         }
         return trimmed;
+    }
+
+    private boolean shouldResetPaperMemory(Map<String, Object> jsonData) {
+        Object resetMemory = jsonData.get("resetMemory");
+        if (resetMemory instanceof Boolean value) {
+            return value;
+        }
+        return resetMemory != null && Boolean.parseBoolean(String.valueOf(resetMemory));
+    }
+
+    private List<String> extractQuestionIds(JsonNode questionIds) {
+        List<String> ids = new ArrayList<>();
+        for (JsonNode questionId : questionIds) {
+            String id = questionId.asText(null);
+            if (id != null && !id.isBlank()) {
+                ids.add(id.trim());
+            }
+        }
+        return ids;
     }
 
     private void sendSse(SseEmitter emitter, String event, Object data) {
