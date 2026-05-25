@@ -944,4 +944,73 @@ public class GraphRepository {
             });
         }
     }
+
+    public List<GraphKnowledgeNode> listKnowledgeNodesWithParent(long graphId) {
+        String query = "MATCH (n:KnowledgeNode {graphId: $graphId}) "
+                + "OPTIONAL MATCH (p:KnowledgeNode {graphId: $graphId})-[:contains]->(n) "
+                + "RETURN n.nodeId AS nodeId, p.nodeId AS parentNodeId, n.name AS name, "
+                + "n.description AS description, [lbl IN labels(n) WHERE lbl <> 'KnowledgeNode'][0] AS label";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> tx.run(query, Map.of("graphId", graphId)).list(record -> {
+                GraphKnowledgeNode node = new GraphKnowledgeNode();
+                node.setNodeId(record.get("nodeId").asString(null));
+                node.setParentNodeId(record.get("parentNodeId").asString(null));
+                node.setName(record.get("name").asString(""));
+                node.setDescription(record.get("description").asString(""));
+                node.setLabel(record.get("label").asString(""));
+                return node;
+            }));
+        }
+    }
+
+    public List<GraphKnowledgeNode> listLeafKnowledgeNodes(long graphId) {
+        String query = "MATCH (n:KnowledgeNode {graphId: $graphId}) "
+                + "WHERE NOT (n)-[:contains]->(:KnowledgeNode {graphId: $graphId}) "
+                + "OPTIONAL MATCH (p:KnowledgeNode {graphId: $graphId})-[:contains]->(n) "
+                + "RETURN n.nodeId AS nodeId, p.nodeId AS parentNodeId, n.name AS name, "
+                + "n.description AS description, [lbl IN labels(n) WHERE lbl <> 'KnowledgeNode'][0] AS label";
+        try (Session session = neo4jDriver.session()) {
+            return session.executeRead(tx -> tx.run(query, Map.of("graphId", graphId)).list(record -> {
+                GraphKnowledgeNode node = new GraphKnowledgeNode();
+                node.setNodeId(record.get("nodeId").asString(null));
+                node.setParentNodeId(record.get("parentNodeId").asString(null));
+                node.setName(record.get("name").asString(""));
+                node.setDescription(record.get("description").asString(""));
+                node.setLabel(record.get("label").asString(""));
+                return node;
+            }));
+        }
+    }
+
+    public NodeProgressSnapshot getNodeProgressSnapshot(long graphId, String nodeId, long courseId, int studentId) {
+        Map<String, Object> row = getNodeProgress(graphId, nodeId, courseId, studentId);
+        if (row == null) {
+            return NodeProgressSnapshot.builder()
+                    .videoProgress(0.0d)
+                    .examProgress(0.0d)
+                    .homeworkProgress(0.0d)
+                    .overallProgress(0.0d)
+                    .build();
+        }
+        return NodeProgressSnapshot.builder()
+                .videoProgress(toDouble(row.get("videoProgress")))
+                .examProgress(toDouble(row.get("examProgress")))
+                .homeworkProgress(toDouble(row.get("homeworkProgress")))
+                .overallProgress(toDouble(row.get("overallProgress")))
+                .build();
+    }
+
+    private double toDouble(Object value) {
+        if (value == null) {
+            return 0.0d;
+        }
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        try {
+            return Double.parseDouble(String.valueOf(value));
+        } catch (Exception ignored) {
+            return 0.0d;
+        }
+    }
 }
