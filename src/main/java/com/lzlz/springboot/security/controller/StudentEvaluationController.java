@@ -1,9 +1,9 @@
 package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.ApiResponse;
-import com.lzlz.springboot.security.dto.evaluation.AbilityEvaluationResponse;
-import com.lzlz.springboot.security.dto.evaluation.KnowledgeEvaluationResponse;
-import com.lzlz.springboot.security.dto.evaluation.RadarChartResponse;
+import com.lzlz.springboot.security.dto.AbilityEvaluationResponse;
+import com.lzlz.springboot.security.dto.KnowledgeEvaluationResponse;
+import com.lzlz.springboot.security.dto.RadarChartResponse;
 import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.service.CurrentUserResolver;
 import com.lzlz.springboot.security.service.StudentEvaluationService;
