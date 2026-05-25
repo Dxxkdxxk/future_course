@@ -8,9 +8,12 @@ import java.util.List;
 public class AiGradeSubmissionResponse {
     private Integer score;
     private String comment;
-    private String summary;
-    private List<String> problems;
-    private List<String> suggestions;
-    private String basis;
-    private String rawResponse;
+    private List<ScoringPointResult> scoringPointResults;
+
+    @Data
+    public static class ScoringPointResult {
+        private String description;
+        private String completion;
+        private String comment;
+    }
 }

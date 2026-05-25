@@ -2,6 +2,7 @@ package com.lzlz.springboot.security.service;
 
 import com.lzlz.springboot.security.assistant.RagAssistant;
 import com.lzlz.springboot.security.assistant.StreamingRagAssistant;
+import com.lzlz.springboot.security.dto.AiGradeSubmissionRequest;
 import com.lzlz.springboot.security.rag.RagRetrievalContext;
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -68,9 +69,11 @@ public class RagService {
     }
 
     public String gradeHomeworkJson(String courseId, String homeworkTitle, String homeworkContent,
-                                    Integer totalScore, String studentContent, String extraInstruction) {
+                                    Integer totalScore, String studentContent, String extraInstruction,
+                                    List<AiGradeSubmissionRequest.ScoringPoint> scoringPoints) {
         String content = studentContent == null ? "" : studentContent;
         String excerpt = content.length() > 800 ? content.substring(0, 800) + "…" : content;
+        String scoringPointsText = formatScoringPoints(scoringPoints);
         String user = """
                 课程 ID：%s
 
@@ -83,6 +86,9 @@ public class RagService {
                 作业总分：%s
 
                 教师补充批改要求：
+                %s
+
+                得分点/分项评价依据：
                 %s
 
                 【供向量检索摘要】请据此从知识库匹配与本作业相关的讲义、习题与评分要点：
@@ -98,10 +104,23 @@ public class RagService {
                 homeworkContent == null ? "" : homeworkContent,
                 totalScore == null ? 100 : totalScore,
                 extraInstruction == null ? "" : extraInstruction,
+                scoringPointsText,
                 excerpt,
                 content
         );
         return withRetrievalCourseId(courseId, () -> ragAssistant.gradeHomeworkJson(user));
+    }
+
+    private String formatScoringPoints(List<AiGradeSubmissionRequest.ScoringPoint> scoringPoints) {
+        if (scoringPoints == null || scoringPoints.isEmpty()) {
+            return "无";
+        }
+        List<String> descriptions = scoringPoints.stream()
+                .map(AiGradeSubmissionRequest.ScoringPoint::getDescription)
+                .filter(description -> description != null && !description.isBlank())
+                .map(description -> "- " + description.trim())
+                .toList();
+        return descriptions.isEmpty() ? "无" : String.join("\n", descriptions);
     }
 
     public String markExperiment(MultipartFile file, String courseId) throws Exception {

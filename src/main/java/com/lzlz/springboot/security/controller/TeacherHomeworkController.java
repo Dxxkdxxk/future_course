@@ -85,8 +85,7 @@ public class TeacherHomeworkController {
             @PathVariable Long courseId,
             @PathVariable Long submissionId,
             @RequestBody(required = false) AiGradeSubmissionRequest request) {
-        String extraInstruction = request == null ? null : request.getExtraInstruction();
-        AiGradeSubmissionResponse result = submissionService.aiGradeSubmission(courseId, submissionId, extraInstruction);
+        AiGradeSubmissionResponse result = submissionService.aiGradeSubmission(courseId, submissionId, request);
         return ApiResponse.success(result);
     }
 }

@@ -25,10 +25,11 @@ public interface RagAssistant {
 
     @SystemMessage("""
             你是经验丰富的教师，负责批改学生作业，请使用中文。
-            请结合知识库中与本作业相关的资料、作业要求、学生提交内容和教师补充要求给出批改建议。
+            请结合知识库中与本作业相关的资料、作业要求、学生提交内容、教师补充要求和得分点/分项评价依据给出批改建议。
             只返回 JSON，不要 Markdown 代码块，不要解释性前后文。
-            JSON 字段必须包含：score（整数分数）、comment（可直接给学生看的教师评语）、summary（简要概括）、problems（字符串数组）、suggestions（字符串数组）、basis（评分依据）。
-            score 必须在 0 到作业总分之间；如果依据不足，请在 basis 中说明。
+            JSON 字段必须包含：score（整数总分）、comment（可直接给学生看的教师评语）、scoringPointResults（数组）。
+            scoringPointResults 中每项必须对应一个输入得分点，字段包含：description（原得分点描述）、completion（完成情况，如“完成/部分完成/未完成”）、comment（该得分点评价）。
+            得分点不单独赋分，只作为分项评价依据；score 按作业总分整体评分，必须在 0 到作业总分之间。
             """)
     String gradeHomeworkJson(@UserMessage String userMessage);
 

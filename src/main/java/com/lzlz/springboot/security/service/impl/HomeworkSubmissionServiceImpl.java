@@ -3,6 +3,7 @@ package com.lzlz.springboot.security.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lzlz.springboot.security.dto.AiGradeSubmissionRequest;
 import com.lzlz.springboot.security.dto.AiGradeSubmissionResponse;
 import com.lzlz.springboot.security.dto.StudentSubmissionDto;
 import com.lzlz.springboot.security.entity.Homework;
@@ -241,7 +242,7 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
     }
 
     @Override
-    public AiGradeSubmissionResponse aiGradeSubmission(Long courseId, Long submissionId, String extraInstruction) {
+    public AiGradeSubmissionResponse aiGradeSubmission(Long courseId, Long submissionId, AiGradeSubmissionRequest request) {
         validateRelation(courseId, null, submissionId);
 
         HomeworkSubmission submission = submissionMapper.selectById(submissionId);
@@ -265,10 +266,10 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
                 homework.getContent(),
                 homework.getTotalScore(),
                 studentContent,
-                extraInstruction
+                request == null ? null : request.getExtraInstruction(),
+                request == null ? null : request.getScoringPoints()
         );
         AiGradeSubmissionResponse response = parseAiGradeResponse(rawResponse);
-        response.setRawResponse(rawResponse);
         validateAiScore(response.getScore(), homework.getTotalScore());
         return response;
     }
@@ -305,10 +306,7 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
                 response.setScore(root.get("score").asInt());
             }
             response.setComment(root.path("comment").asText(""));
-            response.setSummary(root.path("summary").asText(""));
-            response.setProblems(toStringList(root.get("problems")));
-            response.setSuggestions(toStringList(root.get("suggestions")));
-            response.setBasis(root.path("basis").asText(""));
+            response.setScoringPointResults(toScoringPointResults(root.get("scoringPointResults")));
             return response;
         } catch (Exception e) {
             throw new CustomGraphException(400, "AI 批改结果不是有效 JSON: " + e.getMessage());
@@ -326,14 +324,18 @@ public class HomeworkSubmissionServiceImpl implements HomeworkSubmissionService 
         return text;
     }
 
-    private List<String> toStringList(JsonNode node) {
+    private List<AiGradeSubmissionResponse.ScoringPointResult> toScoringPointResults(JsonNode node) {
         if (node == null || !node.isArray()) {
             return Collections.emptyList();
         }
-        List<String> result = new ArrayList<>();
+        List<AiGradeSubmissionResponse.ScoringPointResult> result = new ArrayList<>();
         for (JsonNode item : node) {
-            if (!item.asText("").isBlank()) {
-                result.add(item.asText());
+            AiGradeSubmissionResponse.ScoringPointResult pointResult = new AiGradeSubmissionResponse.ScoringPointResult();
+            pointResult.setDescription(item.path("description").asText(""));
+            pointResult.setCompletion(item.path("completion").asText(""));
+            pointResult.setComment(item.path("comment").asText(""));
+            if (!pointResult.getDescription().isBlank() || !pointResult.getComment().isBlank()) {
+                result.add(pointResult);
             }
         }
         return result;
