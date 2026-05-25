@@ -28,4 +28,6 @@ public interface GraphLearningProgressService {
     void recalculateStudentByExamTask(Long courseId, Long taskId, Integer studentId);
 
     void recalculateAllStudentsForNode(Long courseId, Long graphId, String nodeId);
+
+    GraphNodeProgress recalculateNodeProgress(Long courseId, Long graphId, String nodeId, Integer studentId);
 }
