@@ -231,6 +231,12 @@ public class RagController {
             response.put("code", 200);
             response.put("msg", "AI组卷成功");
             List<String> generatedQuestionIds = extractQuestionIds(questionIds);
+            if (generatedQuestionIds.isEmpty()) {
+                response.put("code", 400);
+                response.put("msg", "AI返回的题目数组中没有有效题目ID");
+                response.put("data", Map.of("response", aiResponse));
+                return ResponseEntity.badRequest().body(response);
+            }
             paperQuestionMemory.put(memoryKey, generatedQuestionIds);
             response.put("data", Map.of("questions", questionIds));
             return ResponseEntity.ok(response);
@@ -416,7 +422,12 @@ public class RagController {
     private List<String> extractQuestionIds(JsonNode questionIds) {
         List<String> ids = new ArrayList<>();
         for (JsonNode questionId : questionIds) {
-            String id = questionId.asText(null);
+            String id = null;
+            if (questionId.isTextual() || questionId.isNumber()) {
+                id = questionId.asText(null);
+            } else if (questionId.isObject() && questionId.has("id")) {
+                id = questionId.get("id").asText(null);
+            }
             if (id != null && !id.isBlank()) {
                 ids.add(id.trim());
             }
