@@ -5,6 +5,8 @@ import com.lzlz.springboot.security.dto.GraphEdge;
 import com.lzlz.springboot.security.dto.GraphNode;
 import com.lzlz.springboot.security.dto.UpdateNodeRequest;
 import com.lzlz.springboot.security.dto.GraphResourceDto;
+import com.lzlz.springboot.security.dto.evaluation.GraphKnowledgeNode;
+import com.lzlz.springboot.security.dto.evaluation.NodeProgressSnapshot;
 import com.lzlz.springboot.security.exception.CustomGraphException;
 import com.lzlz.springboot.security.exception.ResourceNotFoundException;
 import org.neo4j.driver.*;
