@@ -24,7 +24,7 @@ public class RedisCacheService {
     public void set(String key, Object value, Duration ttl) {
         try {
             redisTemplate.opsForValue().set(key, value, ttl);
-            log.info("redis cache set success, key={}, ttlSeconds={}", key, ttl.getSeconds());
+            log.debug("redis cache set success, key={}, ttlSeconds={}", key, ttl.getSeconds());
         } catch (Exception e) {
             log.warn("redis cache set failed, key={}", key, e);
         }
@@ -34,10 +34,10 @@ public class RedisCacheService {
         try {
             Object value = redisTemplate.opsForValue().get(key);
             if (value == null) {
-                log.info("redis cache miss, key={}", key);
+                log.debug("redis cache miss, key={}", key);
                 return null;
             }
-            log.info("redis cache hit, key={}", key);
+            log.debug("redis cache hit, key={}", key);
             return objectMapper.convertValue(value, clazz);
         } catch (Exception e) {
             log.warn("redis cache get failed, key={}", key, e);
@@ -49,10 +49,10 @@ public class RedisCacheService {
         try {
             Object value = redisTemplate.opsForValue().get(key);
             if (value == null) {
-                log.info("redis cache miss, key={}", key);
+                log.debug("redis cache miss, key={}", key);
                 return null;
             }
-            log.info("redis cache hit, key={}", key);
+            log.debug("redis cache hit, key={}", key);
             return objectMapper.convertValue(value, typeReference);
         } catch (Exception e) {
             log.warn("redis cache get failed, key={}", key, e);
@@ -63,7 +63,7 @@ public class RedisCacheService {
     public void delete(String key) {
         try {
             redisTemplate.delete(key);
-            log.info("redis cache delete, key={}", key);
+            log.debug("redis cache delete, key={}", key);
         } catch (Exception e) {
             log.warn("redis cache delete failed, key={}", key, e);
         }
@@ -74,7 +74,7 @@ public class RedisCacheService {
             Set<String> keys = redisTemplate.keys(prefix + "*");
             if (keys != null && !keys.isEmpty()) {
                 redisTemplate.delete(keys);
-                log.info("redis cache delete by prefix, prefix={}, count={}", prefix, keys.size());
+                log.debug("redis cache delete by prefix, prefix={}, count={}", prefix, keys.size());
             }
         } catch (Exception e) {
             log.warn("redis cache delete by prefix failed, prefix={}", prefix, e);
