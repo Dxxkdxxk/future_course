@@ -31,4 +31,12 @@ public final class RedisKeys {
     public static String graphDetail(Long graphId) {
         return "graph:detail:" + graphId;
     }
+
+    public static String graphPartial(Long graphId, String parentKey, Integer depth) {
+        return graphPartialPrefix(graphId) + "parent:" + parentKey + ":depth:" + depth;
+    }
+
+    public static String graphPartialPrefix(Long graphId) {
+        return "graph:partial:" + graphId + ":";
+    }
 }

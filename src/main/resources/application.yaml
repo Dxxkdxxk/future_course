@@ -107,3 +107,4 @@ cache:
     class-list-seconds: 300
     question-list-seconds: 300
     graph-detail-seconds: 120
+    graph-partial-seconds: 120

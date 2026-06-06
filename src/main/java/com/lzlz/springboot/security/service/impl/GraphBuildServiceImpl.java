@@ -50,6 +50,9 @@ public class GraphBuildServiceImpl implements GraphBuildService {
     @Value("${cache.ttl.graph-detail-seconds:120}")
     private long graphDetailTtlSeconds;
 
+    @Value("${cache.ttl.graph-partial-seconds:120}")
+    private long graphPartialTtlSeconds;
+
 
     // 定义每一层对应的 Label (根据列索引 0-4)
     private static final String[] LEVEL_LABELS = {
@@ -175,7 +178,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
 
             long newGraphId = metadata.getGraphId();
             graphRepository.saveGraph(newGraphId, nodes, edges);
-            evictGraphDetailCache(newGraphId);
+            evictGraphCaches(newGraphId);
 
             return GraphBuildResponse.builder()
                     .graphId(newGraphId)
@@ -370,6 +373,12 @@ public class GraphBuildServiceImpl implements GraphBuildService {
     @Override
     public GraphBuildResponse getGraphPartial(long graphId, String parentNodeId, int depth) {
         int effectiveDepth = depth <= 0 ? 1 : depth;
+        String cacheKey = RedisKeys.graphPartial(graphId, normalizeParentKey(parentNodeId), effectiveDepth);
+        GraphBuildResponse cached = redisCacheService.get(cacheKey, GraphBuildResponse.class);
+        if (cached != null) {
+            return cached;
+        }
+
         Map<String, List<Map<String, Object>>> components =
                 graphRepository.getGraphComponentsPartial(graphId, parentNodeId, effectiveDepth);
 
@@ -391,11 +400,13 @@ public class GraphBuildServiceImpl implements GraphBuildService {
                         .build())
                 .collect(Collectors.toList());
 
-        return GraphBuildResponse.builder()
+        GraphBuildResponse response = GraphBuildResponse.builder()
                 .graphId(graphId)
                 .nodes(nodes)
                 .edges(edges)
                 .build();
+        redisCacheService.set(cacheKey, response, Duration.ofSeconds(graphPartialTtlSeconds));
+        return response;
     }
 
 
@@ -444,7 +455,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
                 .description((String) nodeData.get("description"))
                 .label((String) nodeData.get("label"))
                 .build();
-        evictGraphDetailCache(graphId);
+        evictGraphCaches(graphId);
 
         // 4. 返回新创建的节点 DTO
         return newNode;
@@ -459,7 +470,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         // 所有的业务逻辑 (查找, 查重, 更新) 都在 GraphRepository 的
         // updateNodeProperties 方法中，并由一个 Neo4j 事务保证
         graphRepository.updateNodeProperties(graphId, nodeId, request);
-        evictGraphDetailCache(graphId);
+        evictGraphCaches(graphId);
 
         // 2. (!!!) [重要]
         // 我们不需要检查 "ResourceNotFoundException" 或 "CustomGraphException".
@@ -491,7 +502,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         if (!deleted) {
             throw new ResourceNotFoundException("Node not found with id: " + nodeId);
         }
-        evictGraphDetailCache(graphId);
+        evictGraphCaches(graphId);
     }
 
 
@@ -526,7 +537,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
                 .targetNodeId((String) edgeData.get("targetNodeId"))
                 .relationType((String) edgeData.get("relationType"))
                 .build();
-        evictGraphDetailCache(graphId);
+        evictGraphCaches(graphId);
         return edge;
     }
 
@@ -541,7 +552,7 @@ public class GraphBuildServiceImpl implements GraphBuildService {
         if (!deleted) {
             throw new ResourceNotFoundException("Edge not found with id: " + edgeId);
         }
-        evictGraphDetailCache(graphId);
+        evictGraphCaches(graphId);
     }
 
 
@@ -572,11 +583,16 @@ public class GraphBuildServiceImpl implements GraphBuildService {
                 .targetNodeId((String) result.get("targetNodeId"))
                 .relationType((String) result.get("relationType"))
                 .build();
-        evictGraphDetailCache(graphId);
+        evictGraphCaches(graphId);
         return edge;
     }
 
-    private void evictGraphDetailCache(long graphId) {
+    private void evictGraphCaches(long graphId) {
         redisCacheService.delete(RedisKeys.graphDetail(graphId));
+        redisCacheService.deleteByPrefix(RedisKeys.graphPartialPrefix(graphId));
+    }
+
+    private String normalizeParentKey(String parentNodeId) {
+        return parentNodeId == null || parentNodeId.isBlank() ? "root" : parentNodeId.trim();
     }
 }
