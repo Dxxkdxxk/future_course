@@ -155,23 +155,38 @@ public class RagService {
     }
 
     public String generatePaperQuestionIds(String requirement, String courseId, String questionsJson) {
-        return generatePaperQuestionIds(requirement, courseId, questionsJson, "[]");
+        return generatePaperQuestionIds(requirement, courseId, questionsJson, "[]", "");
     }
 
-    public String generatePaperQuestionIds(String requirement, String courseId, String questionsJson, String previousQuestionsJson) {
+    public String generatePaperQuestionIds(
+            String requirement,
+            String courseId,
+            String questionsJson,
+            String previousQuestionsJson) {
+        return generatePaperQuestionIds(requirement, courseId, questionsJson, previousQuestionsJson, "");
+    }
+
+    public String generatePaperQuestionIds(
+            String requirement,
+            String courseId,
+            String questionsJson,
+            String previousQuestionsJson,
+            String previousRequirement) {
         String system = """
                 你是智能组卷助手。请根据教师本轮要求，从给定题库中选择合适题目。
                 规则：
                 1. 只能选择当前题库中已经存在的题目 id，不得编造 id。
-                2. 当前课程完整题库 JSON 只是候选题库，不是当前试卷，不能直接把整个题库当作试卷返回。上一版试卷题目 ID 列表才是当前正在修改的试卷。
-                3. 如果上一版试卷题目 ID 列表非空，必须严格在上一版试卷基础上修改，不能扩展到整个题库。例如上一版有 7 道题，要求“去掉一道选择题”，返回结果应为 6 道题。
-                4. 如果没有提供上一版试卷题目 ID 列表，或列表为空，则按本轮要求从零组卷。
-                5. 返回最终完整试卷的题目 ID 数组，而不是只返回新增或删除的题，也不是返回候选题库。
-                6. 只返回 JSON 字符串数组，例如：[\"id1\",\"id2\"]。
-                7. 不要返回 markdown，不要解释，不要返回其他字段。
+                2. 如果上一版试卷要求和题目 ID 列表非空，则上一版试卷题目 ID 列表是当前正在修改的试卷。必须严格在上一版试卷基础上修改，不能扩展到整个题库。例如上一版有 7 道题，要求“去掉一道选择题”，返回结果应为 6 道题。
+                3. 如果没有提供上一版试卷题目 ID 列表，或列表为空，则按本轮要求从零组卷。
+                4. 返回最终完整试卷的题目 ID 数组，而不是只返回新增或删除的题，也不是返回候选题库。
+                5. 只返回 JSON 字符串数组，例如：[\"id1\",\"id2\"]。
+                6. 不要返回 markdown，不要解释，不要返回其他字段。
                 """;
         String user = """
                 课程 ID：%s
+
+                上一轮教师要求：
+                %s
 
                 本轮教师要求：
                 %s
@@ -183,6 +198,7 @@ public class RagService {
                 %s
                 """.formatted(
                 courseId == null ? "" : courseId,
+                previousRequirement == null ? "" : previousRequirement,
                 requirement == null ? "" : requirement,
                 previousQuestionsJson == null ? "[]" : previousQuestionsJson,
                 questionsJson == null ? "[]" : questionsJson

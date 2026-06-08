@@ -32,7 +32,7 @@ public class RagController {
     private final RagService ragService;
     private final QuestionService questionService;
     private final ObjectMapper objectMapper;
-    private final Map<String, List<String>> paperQuestionMemory = new ConcurrentHashMap<>();
+    private final Map<String, PaperMemory> paperQuestionMemory = new ConcurrentHashMap<>();
 
     /**
      * 上传文档入库（向量 metadata 带 courseId，检索仅在同课程文档内匹配）
@@ -206,11 +206,15 @@ public class RagController {
             }
             List<String> previousQuestions = resetMemory
                     ? List.of()
-                    : paperQuestionMemory.getOrDefault(memoryKey, List.of());
+                    : paperQuestionMemory.getOrDefault(memoryKey, PaperMemory.empty()).questionIds();
+            String previousRequirement = resetMemory
+                    ? ""
+                    : paperQuestionMemory.getOrDefault(memoryKey, PaperMemory.empty()).requirement();
             String previousQuestionsJson = objectMapper.writeValueAsString(previousQuestions);
             List<Question> questions = questionService.getQuestions(Long.valueOf(courseId), new QuestionDto.QueryRequest());
             String questionsJson = objectMapper.writeValueAsString(questions);
-            String aiResponse = ragService.generatePaperQuestionIds(requirement, courseId, questionsJson, previousQuestionsJson);
+            String aiResponse = ragService.generatePaperQuestionIds(
+                    requirement, courseId, questionsJson, previousQuestionsJson, previousRequirement);
 
             JsonNode root = objectMapper.readTree(stripJsonMarkdown(aiResponse));
             JsonNode questionIds = root.isArray() ? root : null;
@@ -237,7 +241,7 @@ public class RagController {
                 response.put("data", Map.of("response", aiResponse));
                 return ResponseEntity.badRequest().body(response);
             }
-            paperQuestionMemory.put(memoryKey, generatedQuestionIds);
+            paperQuestionMemory.put(memoryKey, new PaperMemory(generatedQuestionIds, requirement));
             response.put("data", Map.of("questions", questionIds));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -417,6 +421,12 @@ public class RagController {
             return value;
         }
         return resetMemory != null && Boolean.parseBoolean(String.valueOf(resetMemory));
+    }
+
+    private record PaperMemory(List<String> questionIds, String requirement) {
+        static PaperMemory empty() {
+            return new PaperMemory(List.of(), "");
+        }
     }
 
     private List<String> extractQuestionIds(JsonNode questionIds) {
