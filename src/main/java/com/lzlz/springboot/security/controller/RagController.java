@@ -1,10 +1,13 @@
 package com.lzlz.springboot.security.controller;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.lzlz.springboot.security.constants.RedisKeys;
 import com.lzlz.springboot.security.dto.QuestionDto;
 import com.lzlz.springboot.security.entity.Question;
 import com.lzlz.springboot.security.service.QuestionService;
 import com.lzlz.springboot.security.service.RagDocumentService;
 import com.lzlz.springboot.security.service.RagService;
+import com.lzlz.springboot.security.service.RedisCacheService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -16,23 +19,26 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
 @RequestMapping({"/api/v1/course"})
 @RequiredArgsConstructor
 public class RagController {
 
+    private static final Duration PAPER_MEMORY_TTL = Duration.ofHours(24);
+    private static final TypeReference<PaperMemory> PAPER_MEMORY_TYPE = new TypeReference<>() {};
+
     private final RagDocumentService documentService;
     private final RagService ragService;
     private final QuestionService questionService;
     private final ObjectMapper objectMapper;
-    private final Map<String, PaperMemory> paperQuestionMemory = new ConcurrentHashMap<>();
+    private final RedisCacheService redisCacheService;
 
     /**
      * 上传文档入库（向量 metadata 带 courseId，检索仅在同课程文档内匹配）
@@ -199,17 +205,14 @@ public class RagController {
         Map<String, Object> response = new HashMap<>();
         try {
             String requirement = (String) jsonData.get("requirement");
-            String memoryKey = courseId.trim();
+            String courseKey = courseId.trim();
             boolean resetMemory = shouldResetPaperMemory(jsonData);
             if (resetMemory) {
-                paperQuestionMemory.remove(memoryKey);
+                clearPaperMemory(courseKey);
             }
-            List<String> previousQuestions = resetMemory
-                    ? List.of()
-                    : paperQuestionMemory.getOrDefault(memoryKey, PaperMemory.empty()).questionIds();
-            String previousRequirement = resetMemory
-                    ? ""
-                    : paperQuestionMemory.getOrDefault(memoryKey, PaperMemory.empty()).requirement();
+            PaperMemory previousMemory = resetMemory ? PaperMemory.empty() : loadPaperMemory(courseKey);
+            List<String> previousQuestions = previousMemory.questionIds();
+            String previousRequirement = previousMemory.requirement();
             String previousQuestionsJson = objectMapper.writeValueAsString(previousQuestions);
             List<Question> questions = questionService.getQuestions(Long.valueOf(courseId), new QuestionDto.QueryRequest());
             String questionsJson = objectMapper.writeValueAsString(questions);
@@ -241,7 +244,7 @@ public class RagController {
                 response.put("data", Map.of("response", aiResponse));
                 return ResponseEntity.badRequest().body(response);
             }
-            paperQuestionMemory.put(memoryKey, new PaperMemory(generatedQuestionIds, requirement));
+            savePaperMemory(courseKey, new PaperMemory(generatedQuestionIds, requirement));
             response.put("data", Map.of("questions", questionIds));
             return ResponseEntity.ok(response);
         } catch (Exception e) {
@@ -421,6 +424,19 @@ public class RagController {
             return value;
         }
         return resetMemory != null && Boolean.parseBoolean(String.valueOf(resetMemory));
+    }
+
+    private PaperMemory loadPaperMemory(String courseKey) {
+        PaperMemory memory = redisCacheService.get(RedisKeys.paperQuestionMemory(courseKey), PAPER_MEMORY_TYPE);
+        return memory != null ? memory : PaperMemory.empty();
+    }
+
+    private void savePaperMemory(String courseKey, PaperMemory memory) {
+        redisCacheService.set(RedisKeys.paperQuestionMemory(courseKey), memory, PAPER_MEMORY_TTL);
+    }
+
+    private void clearPaperMemory(String courseKey) {
+        redisCacheService.delete(RedisKeys.paperQuestionMemory(courseKey));
     }
 
     private record PaperMemory(List<String> questionIds, String requirement) {

@@ -39,4 +39,8 @@ public final class RedisKeys {
     public static String graphPartialPrefix(Long graphId) {
         return "graph:partial:" + graphId + ":";
     }
+
+    public static String paperQuestionMemory(String courseId) {
+        return "paper:memory:course:" + courseId;
+    }
 }
