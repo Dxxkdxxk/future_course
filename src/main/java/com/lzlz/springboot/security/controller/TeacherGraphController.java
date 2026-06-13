@@ -2,6 +2,8 @@ package com.lzlz.springboot.security.controller;
 
 import com.lzlz.springboot.security.dto.*;
 import com.lzlz.springboot.security.entity.User;
+import com.lzlz.springboot.security.exception.ResourceNotFoundException;
+import com.lzlz.springboot.security.repository.GraphRepository;
 import com.lzlz.springboot.security.service.CurrentUserResolver;
 import com.lzlz.springboot.security.service.GraphBuildService;
 import com.lzlz.springboot.security.service.GraphLearningProgressService;
@@ -27,6 +29,9 @@ public class TeacherGraphController {
 
     @Autowired
     private CurrentUserResolver currentUserResolver;
+
+    @Autowired
+    private GraphRepository graphRepository;
 
     // (!!!)
     // (!!!) 这是您需要的新接口 (Step 1: 发现) (!!!)
@@ -211,5 +216,65 @@ public class TeacherGraphController {
         GraphEdge updatedEdge = graphBuildService.updateEdge(graphId, edgeId, request);
 
         return ResponseEntity.ok(ApiResponse.success(updatedEdge));
+    }
+
+    @PostMapping("/{graphId}/nodes/{nodeId}/resources")
+    public ResponseEntity<ApiResponse<Void>> bindResource(@PathVariable Long courseId,
+                                                          @PathVariable Long graphId,
+                                                          @PathVariable String nodeId,
+                                                          @RequestBody GraphResourceDto.BindRequest request) {
+        boolean exists = graphRepository.checkNodeExists(graphId, nodeId);
+        if (!exists) {
+            throw new ResourceNotFoundException("Node not found in graph");
+        }
+        graphRepository.bindResource(graphId, nodeId, request);
+        graphLearningProgressService.recalculateAllStudentsForNode(courseId, graphId, nodeId);
+        return ResponseEntity.ok(new ApiResponse<>(200, "success", null));
+    }
+
+    @GetMapping("/{graphId}/nodes/{nodeId}/resources")
+    public ResponseEntity<ApiResponse<List<GraphResourceDto.ResourceView>>> getResources(@PathVariable Long courseId,
+                                                                                          @PathVariable Long graphId,
+                                                                                          @PathVariable String nodeId) {
+        List<GraphResourceDto.ResourceView> list = graphRepository.getNodeResources(graphId, nodeId);
+        return ResponseEntity.ok(new ApiResponse<>(200, "success", list));
+    }
+
+    @DeleteMapping("/{graphId}/resources/{resourceId}")
+    public ResponseEntity<ApiResponse<Void>> deleteResource(@PathVariable Long courseId,
+                                                            @PathVariable Long graphId,
+                                                            @PathVariable String resourceId) {
+        String ownerNodeId = graphRepository.findResourceOwnerNodeId(graphId, resourceId);
+        graphRepository.deleteResource(graphId, resourceId);
+        if (ownerNodeId != null && !ownerNodeId.isBlank()) {
+            graphLearningProgressService.recalculateAllStudentsForNode(courseId, graphId, ownerNodeId);
+        }
+        return ResponseEntity.ok(new ApiResponse<>(200, "success", null));
+    }
+
+    @PostMapping("/{graphId}/nodes/{nodeId}/bindings")
+    public ResponseEntity<ApiResponse<Void>> bindTask(@PathVariable Long courseId,
+                                                      @PathVariable Long graphId,
+                                                      @PathVariable String nodeId,
+                                                      @RequestBody NodeBindingDto.UpsertRequest request) {
+        graphLearningProgressService.bindNodeTask(courseId, graphId, nodeId, request);
+        return ResponseEntity.ok(ApiResponse.success());
+    }
+
+    @GetMapping("/{graphId}/nodes/{nodeId}/bindings")
+    public ResponseEntity<ApiResponse<NodeBindingDto.BindingListResponse>> listBindings(@PathVariable Long courseId,
+                                                                                         @PathVariable Long graphId,
+                                                                                         @PathVariable String nodeId) {
+        NodeBindingDto.BindingListResponse data = graphLearningProgressService.listNodeBindings(courseId, graphId, nodeId);
+        return ResponseEntity.ok(ApiResponse.success(data));
+    }
+
+    @DeleteMapping("/{graphId}/nodes/{nodeId}/bindings")
+    public ResponseEntity<ApiResponse<Void>> removeBinding(@PathVariable Long courseId,
+                                                           @PathVariable Long graphId,
+                                                           @PathVariable String nodeId,
+                                                           @RequestBody NodeBindingDto.RemoveRequest request) {
+        graphLearningProgressService.removeNodeBinding(courseId, graphId, nodeId, request);
+        return ResponseEntity.ok(ApiResponse.success());
     }
 }

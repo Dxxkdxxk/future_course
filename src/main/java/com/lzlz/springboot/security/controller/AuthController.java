@@ -1,12 +1,17 @@
 package com.lzlz.springboot.security.controller;
 
 import cn.hutool.http.server.HttpServerRequest;
+import com.lzlz.springboot.security.config.SsoProperties;
 import com.lzlz.springboot.security.domain.AuthRequest;
+import com.lzlz.springboot.security.dto.SsoExchangeRequest;
+import com.lzlz.springboot.security.dto.SsoLoginResult;
+import com.lzlz.springboot.security.exception.SsoAuthenticationException;
 import com.lzlz.springboot.security.jwt.JwtTokenProvider;
 import com.lzlz.springboot.security.response.ApiResponse;
 import com.lzlz.springboot.security.response.ChangePasswordRequest;
 import com.lzlz.springboot.security.security.CustomUserDetailsService;
 import com.lzlz.springboot.security.entity.User;
+import com.lzlz.springboot.security.service.SsoLoginService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -14,6 +19,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.List;
 import java.util.Map;
@@ -34,6 +41,12 @@ public class AuthController {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private SsoLoginService ssoLoginService;
+
+    @Autowired
+    private SsoProperties ssoProperties;
 
     @PostMapping("/login")
     public ApiResponse<Object> login(@RequestBody AuthRequest request) {
@@ -64,6 +77,46 @@ public class AuthController {
         return new ApiResponse<>(0, "登录成功", responseData);
     }
 
+
+    @GetMapping("/sso/login")
+    public ApiResponse<Object> ssoLogin() {
+        return new ApiResponse<>(0, "success", Map.of("loginUrl", ssoLoginService.buildLoginUrl()));
+    }
+
+    @GetMapping("/sso/callback")
+    public RedirectView ssoCallback(@RequestParam(value = "ticket", required = false) String ticket) {
+        try {
+            String code = ssoLoginService.loginByTicketAndCreateCode(ticket);
+            String redirectUrl = UriComponentsBuilder.fromUriString(ssoProperties.getFrontendCallbackUrl())
+                    .queryParam("code", code)
+                    .build()
+                    .encode()
+                    .toUriString();
+            return new RedirectView(redirectUrl);
+        } catch (SsoAuthenticationException e) {
+            String redirectUrl = UriComponentsBuilder.fromUriString(ssoProperties.getFrontendCallbackUrl())
+                    .queryParam("error", e.getMessage())
+                    .build()
+                    .encode()
+                    .toUriString();
+            return new RedirectView(redirectUrl);
+        }
+    }
+
+    @PostMapping("/sso/exchange")
+    public ApiResponse<Object> ssoExchange(@RequestBody SsoExchangeRequest request) {
+        try {
+            SsoLoginResult result = ssoLoginService.exchangeCode(request == null ? null : request.getCode());
+            return new ApiResponse<>(0, "鐧诲綍鎴愬姛", result);
+        } catch (SsoAuthenticationException e) {
+            return new ApiResponse<>(1, e.getMessage(), null);
+        }
+    }
+
+    @GetMapping("/sso/logout")
+    public ApiResponse<Object> ssoLogout() {
+        return new ApiResponse<>(0, "success", Map.of("logoutUrl", ssoProperties.getLogoutUrl()));
+    }
 
     @PostMapping("/register")
     public ApiResponse<Object> register(@RequestBody AuthRequest request) {

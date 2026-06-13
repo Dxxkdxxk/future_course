@@ -57,6 +57,10 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeRequests(authorize -> authorize
                         .requestMatchers("/api/v1/auth/login").permitAll()
+                        .requestMatchers("/api/v1/auth/sso/login").permitAll()
+                        .requestMatchers("/api/v1/auth/sso/callback").permitAll()
+                        .requestMatchers("/api/v1/auth/sso/exchange").permitAll()
+                        .requestMatchers("/api/v1/auth/sso/logout").permitAll()
                         .requestMatchers("/api/v1/auth/register").permitAll() // 登录页和注册页允许所有用户访问
                         .requestMatchers(HttpMethod.GET, "/admin").hasRole("ADMIN") // 定义一个只允许管理员访问的页面
                         .requestMatchers(HttpMethod.GET, "/user").hasRole("USER") // 只允许用户访问的页面

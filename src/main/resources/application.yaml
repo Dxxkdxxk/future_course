@@ -3,6 +3,17 @@ pkslow:
     secretKey: daf66e01593f61a15b857cf433aae03a005812b31234e149036bcc8dee755dbb
     validityInMs: 86400000
 
+sso:
+  enabled: true
+  server-url: https://auth.bupt.edu.cn/authserver
+  login-url: https://auth.bupt.edu.cn/authserver/login
+  logout-url: https://auth.bupt.edu.cn/authserver/logout
+  validate-url: https://auth.bupt.edu.cn/authserver/serviceValidate
+  service-url: http://8.152.220.164/api/v1/auth/sso/callback
+  frontend-callback-url: http://8.152.220.164/sso/callback
+  auto-create-user: false
+  login-code-ttl-seconds: 120
+
 server:
   port: 8080
 

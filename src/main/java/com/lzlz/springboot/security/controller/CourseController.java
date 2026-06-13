@@ -5,10 +5,13 @@ import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.CourseCreateDto;
 import com.lzlz.springboot.security.dto.CourseUpdateDto;
 import com.lzlz.springboot.security.entity.Course;
+import com.lzlz.springboot.security.entity.User;
+import com.lzlz.springboot.security.service.CurrentUserResolver;
 import com.lzlz.springboot.security.service.ICourseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import jakarta.annotation.Resource;
@@ -18,7 +21,6 @@ import com.lzlz.springboot.security.mapper.CourseTextbookRelationMapper;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/v1/course")
 public class CourseController {
 
     @Resource
@@ -27,15 +29,18 @@ public class CourseController {
     @Autowired
     private ICourseService courseService;
 
+    @Autowired
+    private CurrentUserResolver currentUserResolver;
+
     // GET (All) - 200 OK
-    @GetMapping
+    @GetMapping("/api/v1/course")
     public ResponseEntity<ApiResponse<List<Course>>> getAllCourses() {
         List<Course> courses = courseService.getAllCourses();
         return ResponseEntity.ok(ApiResponse.success(courses));
     }
 
     // POST (Create) - 201 Created
-    @PostMapping
+    @PostMapping("/api/v1/course")
     public ResponseEntity<ApiResponse<Course>> createCourse(@RequestBody CourseCreateDto createDto) {
         Course course = courseService.createCourse(createDto);
 
@@ -47,7 +52,7 @@ public class CourseController {
 
     // GET (One) - 200 OK
     // (404 由 GlobalExceptionHandler 自动处理)
-    @GetMapping("/{courseId}")
+    @GetMapping("/api/v1/course/{courseId}")
     public ResponseEntity<ApiResponse<Course>> getCourse(@PathVariable("courseId") Long id) {
         Course course = courseService.getCourseById(id);
         return ResponseEntity.ok(ApiResponse.success(course));
@@ -55,13 +60,13 @@ public class CourseController {
 
     // PUT (Update) - 200 OK
     // (404 由 GlobalExceptionHandler 自动处理)
-    @PutMapping("/{courseId}")
+    @PutMapping("/api/v1/course/{courseId}")
     public ResponseEntity<ApiResponse<Course>> updateCourse(@PathVariable("courseId") Long id, @RequestBody CourseUpdateDto updateDto) {
         Course course = courseService.updateCourse(id, updateDto);
         return ResponseEntity.ok(ApiResponse.success(course));
     }
 
-    @PostMapping("/{courseId}/teaching-plan")
+    @PostMapping("/api/v1/course/{courseId}/teaching-plan")
     public ResponseEntity<ApiResponse<Course>> uploadTeachingPlan(
             @PathVariable("courseId") Long id,
             @RequestParam("file") MultipartFile file) {
@@ -71,7 +76,7 @@ public class CourseController {
 
     // DELETE (Delete) - 204 No Content
     // (404 由 GlobalExceptionHandler 自动处理)
-    @DeleteMapping("/{courseId}")
+    @DeleteMapping("/api/v1/course/{courseId}")
     public ResponseEntity<ApiResponse<Object>> deleteCourse(@PathVariable("courseId") Long id) {
         courseService.deleteCourse(id);
 
@@ -79,7 +84,7 @@ public class CourseController {
         return ResponseEntity.ok(ApiResponse.success());
     }
 
-    @GetMapping("/{courseId}/textbook")
+    @GetMapping("/api/v1/course/{courseId}/textbook")
     public ResponseEntity<ApiResponse<Long>> getChapterTreeByCourseId(@PathVariable Long courseId) {
         LambdaQueryWrapper<CourseTextbookRelation> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(CourseTextbookRelation::getCourseId, courseId)
@@ -94,5 +99,12 @@ public class CourseController {
 
         Long textbookId = relation.getTextbookId();
         return ResponseEntity.ok(ApiResponse.success(textbookId));
+    }
+
+    @GetMapping("/api/v1/teacher/course")
+    public ResponseEntity<ApiResponse<List<Course>>> getMyCourses(@AuthenticationPrincipal User user) {
+        User currentUser = currentUserResolver.requireUser(user);
+        List<Course> courses = courseService.getCoursesByTeacherId(currentUser.getId());
+        return ResponseEntity.ok(ApiResponse.success(courses));
     }
 }

@@ -3,6 +3,7 @@ package com.lzlz.springboot.security.controller;
 import com.lzlz.springboot.security.dto.ApiResponse;
 import com.lzlz.springboot.security.dto.GraphBuildResponse;
 import com.lzlz.springboot.security.dto.GraphInfoResponse;
+import com.lzlz.springboot.security.dto.VideoProgressDto;
 import com.lzlz.springboot.security.entity.User;
 import com.lzlz.springboot.security.service.CurrentUserResolver;
 import com.lzlz.springboot.security.service.GraphBuildService;
@@ -13,6 +14,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -68,6 +71,21 @@ public class StudentGraphController {
         studentCourseAccessService.checkGraphAccess(currentUser.getId(), courseId, graphId);
         GraphBuildResponse response = graphBuildService.getGraphPartial(graphId, parentNodeId, depth);
         response = graphLearningProgressService.fillStudentProgress(courseId, graphId, currentUser.getId(), response);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/{graphId}/nodes/{nodeId}/video-progress")
+    public ResponseEntity<ApiResponse<VideoProgressDto.ReportResponse>> reportVideoProgress(
+            @PathVariable Long courseId,
+            @PathVariable Long graphId,
+            @PathVariable String nodeId,
+            @AuthenticationPrincipal User user,
+            @RequestBody VideoProgressDto.ReportRequest request) {
+        User currentUser = currentUserResolver.requireUser(user);
+        studentCourseAccessService.checkGraphAccess(currentUser.getId(), courseId, graphId);
+        VideoProgressDto.ReportResponse response = graphLearningProgressService.reportVideoProgress(
+                courseId, graphId, nodeId, currentUser.getId(), request
+        );
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }
