@@ -107,7 +107,7 @@ public class AuthController {
     public ApiResponse<Object> ssoExchange(@RequestBody SsoExchangeRequest request) {
         try {
             SsoLoginResult result = ssoLoginService.exchangeCode(request == null ? null : request.getCode());
-            return new ApiResponse<>(0, "鐧诲綍鎴愬姛", result);
+            return new ApiResponse<>(0, "success", result);
         } catch (SsoAuthenticationException e) {
             return new ApiResponse<>(1, e.getMessage(), null);
         }
